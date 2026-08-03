@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env*.local
+.DS_Store
+*.tsbuildinfo
+
+# local caches — regenerate with `npm run ingest`
+.cache/
+data/strokes/
+
+# internal planning docs — this repo is public (see public-repo-prod-code-only)
+docs/superpowers/
