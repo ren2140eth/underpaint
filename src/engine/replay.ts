@@ -50,6 +50,13 @@ export interface Replay {
   evColor: Uint8Array;
   evTime: Float64Array;
   totalPlaced: number;
+  /**
+   * Placements that repainted a coordinate already covered earlier in the same
+   * stroke. A brush dragged back over its own path does this a little; blobs
+   * that repeat one coordinate hundreds of times do it a lot. Kept separate so
+   * "buried labour" measures paint rather than repetition.
+   */
+  selfOverlap: number;
   firstTime: number;
   lastTime: number;
 }
@@ -83,10 +90,16 @@ export function replay(strokes: Stroke[], size: number): Replay {
   const evTime = new Float64Array(capacity);
 
   let n = 0;
+  let selfOverlap = 0;
   let firstTime = Infinity;
   let lastTime = -Infinity;
 
+  // Which stroke last touched each pixel, 1-based so 0 means "untouched".
+  const touchedBy = new Uint32Array(area);
+  let strokeNumber = 0;
+
   for (const stroke of strokes) {
+    strokeNumber++;
     const key = stroke.accountId.toLowerCase();
     let artist = artistIndex.get(key);
     if (artist === undefined) {
@@ -111,6 +124,9 @@ export function replay(strokes: Stroke[], size: number): Replay {
       if (x >= size || y >= size) continue;
 
       const p = y * size + x;
+      if (touchedBy[p] === strokeNumber) selfOverlap++;
+      touchedBy[p] = strokeNumber;
+
       evArtist[n] = artist;
       evColor[n] = c;
       evTime[n] = time;
@@ -135,6 +151,7 @@ export function replay(strokes: Stroke[], size: number): Replay {
     evColor,
     evTime,
     totalPlaced: n,
+    selfOverlap,
     firstTime: firstTime === Infinity ? 0 : firstTime,
     lastTime: lastTime === -Infinity ? 0 : lastTime,
   };

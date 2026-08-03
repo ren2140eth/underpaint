@@ -5,7 +5,16 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { parsePalette } from "../src/engine/basepaint.js";
+import { LAST_144_DAY, canvasSize, parsePalette } from "../src/engine/basepaint.js";
+
+describe("canvasSize", () => {
+  it("switches from 144 to 256 after the first year", () => {
+    assert.equal(canvasSize(1), 144);
+    assert.equal(canvasSize(LAST_144_DAY), 144);
+    assert.equal(canvasSize(LAST_144_DAY + 1), 256);
+    assert.equal(canvasSize(1090), 256);
+  });
+});
 
 describe("parsePalette", () => {
   it("parses the indexer's comma-separated hex", () => {

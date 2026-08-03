@@ -12,6 +12,41 @@
 import { PNG } from "pngjs";
 import { fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint.js";
 import { replay, renderFinal, toRGBA, UNPAINTED } from "../src/engine/replay.js";
+import { canvasStats } from "../src/engine/stats.js";
+
+/**
+ * Headline numbers measured by hand when the project was scoped. They are
+ * quoted in the README and the design doc, so a definition change that moves
+ * them should fail here rather than quietly making the writing wrong.
+ */
+const GROUND_TRUTH: Record<number, Record<string, number>> = {
+  1080: {
+    placed: 139618,
+    visible: 59546,
+    buried: 80072,
+    artists: 68,
+    artistsVisible: 36,
+    maxDepth: 7,
+    coverage: 0.909,
+    buriedShare: 0.574,
+    meanDepth: 2.34,
+    lateSurge: 0.365,
+  },
+};
+
+/** Numbers agree to the precision the docs quote them at. */
+function checkGroundTruth(day: number, stats: Record<string, unknown>): string[] {
+  const expected = GROUND_TRUTH[day];
+  if (!expected) return [];
+
+  const bad: string[] = [];
+  for (const [key, want] of Object.entries(expected)) {
+    const got = stats[key] as number;
+    const places = String(want).split(".")[1]?.length ?? 0;
+    if (Number(got.toFixed(places)) !== want) bad.push(`${key} expected ${want}, got ${got}`);
+  }
+  return bad;
+}
 
 const OFFICIAL = (day: number) => `https://basepaint.net/v3/${String(day).padStart(4, "0")}.png`;
 
@@ -33,6 +68,7 @@ async function officialImage(day: number): Promise<PNG> {
 async function verifyDay(day: number): Promise<Result> {
   const [canvas, strokes] = await Promise.all([fetchCanvas(day), fetchStrokes(day)]);
   const r = replay(strokes, canvas.size);
+  if (canvas.palette === null) throw new Error("no palette from the indexer or the theme API");
   const palette = parsePalette(canvas.palette);
   const ours = toRGBA(renderFinal(r), palette, r.area);
 
@@ -43,7 +79,9 @@ async function verifyDay(day: number): Promise<Result> {
       size: canvas.size,
       ok: false,
       mismatches: -1,
-      note: `size mismatch: official ${png.width}x${png.height}, canvas ${canvas.size}`,
+      note:
+        `size mismatch: official ${png.width}x${png.height}, canvas ${canvas.size}` +
+        (canvas.filledFromTheme ? " (size came from the theme API)" : ""),
     };
   }
 
@@ -81,25 +119,33 @@ async function verifyDay(day: number): Promise<Result> {
     }
   }
 
+  const badStats = checkGroundTruth(day, canvasStats(r, canvas) as unknown as Record<string, unknown>);
+
   const pct = ((100 * mismatches) / r.area).toFixed(4);
   return {
     day,
     size: canvas.size,
-    ok: mismatches === 0,
+    ok: mismatches === 0 && badStats.length === 0,
     mismatches,
     note:
       `${strokes.length} strokes, ${r.totalPlaced.toLocaleString()} px placed, ` +
       `${r.artists.length} artists, transparent official/ours ` +
       `${transparentInOfficial}/${unpaintedInOurs}` +
-      (mismatches ? ` — ${pct}% differ, ${firstBad}` : ""),
+      (canvas.filledFromTheme ? ", indexer gaps filled from the theme API and confirmed by the PNG" : "") +
+      (GROUND_TRUTH[day] && !badStats.length ? ", headline stats match" : "") +
+      (mismatches ? ` — ${pct}% differ, ${firstBad}` : "") +
+      (badStats.length ? ` — stats drift: ${badStats.join("; ")}` : ""),
   };
 }
 
 async function main() {
   const args = process.argv.slice(2).map(Number).filter(Boolean);
   // A spread across the history: early 144px canvases, the 366 size change,
-  // and recent 256px ones.
-  const days = args.length ? args : [1, 7, 100, 364, 365, 366, 367, 700, 1000, 1080, 1088];
+  // recent 256px ones, and three canvases the indexer has no size for (458,
+  // 569, 1079) so the inferred-size rule is proven against the real PNGs.
+  const days = args.length
+    ? args
+    : [1, 7, 100, 131, 364, 365, 366, 367, 458, 569, 700, 1000, 1079, 1080, 1088];
 
   console.log(`verifying ${days.length} canvases against basepaint.net\n`);
 

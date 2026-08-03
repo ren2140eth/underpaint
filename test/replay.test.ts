@@ -142,6 +142,20 @@ describe("replay", () => {
     assert.equal(r.totalPlaced, 2);
   });
 
+  it("counts placements that repeat a coordinate inside one stroke", () => {
+    // Some canvases carry blobs of a hundred triplets all naming one pixel.
+    const spam = replay([mk(A, 100, "0x" + px(0, 0, 1).repeat(4))], SIZE);
+    assert.equal(spam.totalPlaced, 4);
+    assert.equal(spam.selfOverlap, 3);
+    assert.equal(spam.depth[at(0, 0)], 4);
+  });
+
+  it("does not count repainting across separate strokes as self-overlap", () => {
+    // (0,0) is painted by three different strokes in the fixture — that is
+    // ordinary painting over, not repetition within a stroke.
+    assert.equal(replay(fixture(), SIZE).selfOverlap, 0);
+  });
+
   it("rejects a non-positive or fractional size", () => {
     assert.throws(() => replay([], 0), /size/);
     assert.throws(() => replay([], -4), /size/);
