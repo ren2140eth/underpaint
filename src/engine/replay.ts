@@ -19,6 +19,20 @@ export interface PaintEvent {
 
 export const UNPAINTED = -1;
 
+/** One pixel: XXYYCC. Anything else in a blob is not paint. */
+const TRIPLET = /^[0-9a-fA-F]{6}$/;
+
+/** Stroke blobs are hex, normally 0x-prefixed. Both forms decode the same. */
+function hexBody(data: string): string {
+  return /^0x/i.test(data) ? data.slice(2) : data;
+}
+
+function requireInt(label: string, v: number, min: number, max: number): void {
+  if (!Number.isInteger(v) || v < min || v > max) {
+    throw new RangeError(`${label} must be an integer in [${min}, ${max}], got ${v}`);
+  }
+}
+
 export interface Replay {
   size: number;
   area: number;
@@ -44,10 +58,12 @@ export interface Replay {
  * Replay strokes onto a size x size grid.
  *
  * Strokes must already be in chronological order (fetchStrokes sorts them).
- * Pixels outside the grid are skipped rather than throwing — a malformed blob
- * should not take down a whole canvas.
+ * Pixels outside the grid, truncated tails and non-hex triplets are skipped
+ * rather than throwing — a malformed blob should not take down a whole canvas.
  */
 export function replay(strokes: Stroke[], size: number): Replay {
+  // Coordinates are one byte each, so a grid past 256 is unaddressable.
+  requireInt("replay: size", size, 1, 256);
   const area = size * size;
 
   const color = new Int16Array(area).fill(UNPAINTED);
@@ -58,8 +74,10 @@ export function replay(strokes: Stroke[], size: number): Replay {
   const artists: string[] = [];
   const artistIndex = new Map<string, number>();
 
-  // Upper bound on events, so the arrays are allocated once.
-  const capacity = strokes.reduce((n, s) => n + Math.floor((s.data.length - 2) / 6), 0);
+  // Upper bound on events, so the arrays are allocated once. Must be derived
+  // from the same normalisation the decode loop uses, or the arrays come up
+  // short and the histories silently lose their tail.
+  const capacity = strokes.reduce((n, s) => n + Math.floor(hexBody(s.data).length / 6), 0);
   const evArtist = new Int32Array(capacity);
   const evColor = new Uint8Array(capacity);
   const evTime = new Float64Array(capacity);
@@ -81,12 +99,15 @@ export function replay(strokes: Stroke[], size: number): Replay {
     if (time < firstTime) firstTime = time;
     if (time > lastTime) lastTime = time;
 
-    const hex = stroke.data.startsWith("0x") ? stroke.data.slice(2) : stroke.data;
+    const hex = hexBody(stroke.data);
 
     for (let i = 0; i + 6 <= hex.length; i += 6) {
-      const x = parseInt(hex.slice(i, i + 2), 16);
-      const y = parseInt(hex.slice(i + 2, i + 4), 16);
-      const c = parseInt(hex.slice(i + 4, i + 6), 16);
+      const triplet = hex.slice(i, i + 6);
+      if (!TRIPLET.test(triplet)) continue;
+
+      const x = parseInt(triplet.slice(0, 2), 16);
+      const y = parseInt(triplet.slice(2, 4), 16);
+      const c = parseInt(triplet.slice(4, 6), 16);
       if (x >= size || y >= size) continue;
 
       const p = y * size + x;
@@ -121,7 +142,11 @@ export function replay(strokes: Stroke[], size: number): Replay {
 
 /** The paint events on one pixel, oldest first. */
 export function pixelHistory(r: Replay, x: number, y: number): PaintEvent[] {
-  const stack = r.stacks[y * r.size + x] ?? [];
+  // Unchecked, x = size would quietly read the first pixel of the next row.
+  requireInt("pixelHistory: x coordinate", x, 0, r.size - 1);
+  requireInt("pixelHistory: y coordinate", y, 0, r.size - 1);
+
+  const stack = r.stacks[y * r.size + x];
   return stack.map((i) => ({ artist: r.evArtist[i], color: r.evColor[i], time: r.evTime[i] }));
 }
 
@@ -138,6 +163,7 @@ export function renderFinal(r: Replay): Layer {
 
 /** The canvas as it stood at a unix timestamp. */
 export function renderAtTime(r: Replay, time: number): Layer {
+  if (!Number.isFinite(time)) throw new RangeError(`renderAtTime: time must be finite, got ${time}`);
   return renderTopmost(r, (i) => r.evTime[i] <= time);
 }
 
@@ -148,6 +174,8 @@ export function renderAtTime(r: Replay, time: number): Layer {
  * painted fewer than n+1 times fall back to unpainted.
  */
 export function renderPeel(r: Replay, n: number): Layer {
+  requireInt("renderPeel: depth", n, 0, Number.MAX_SAFE_INTEGER);
+
   const color = new Int16Array(r.area).fill(UNPAINTED);
   const owner = new Int16Array(r.area).fill(UNPAINTED);
 
@@ -164,6 +192,8 @@ export function renderPeel(r: Replay, n: number): Layer {
 
 /** Only this artist's surviving pixels; everything else unpainted. */
 export function renderSolo(r: Replay, artist: number): Layer {
+  requireInt("renderSolo: artist", artist, 0, r.artists.length - 1);
+
   const color = new Int16Array(r.area).fill(UNPAINTED);
   const owner = new Int16Array(r.area).fill(UNPAINTED);
 
@@ -177,6 +207,7 @@ export function renderSolo(r: Replay, artist: number): Layer {
 
 /** The canvas with these artists removed, revealing whatever was beneath. */
 export function renderWithout(r: Replay, muted: ReadonlySet<number>): Layer {
+  for (const artist of muted) requireInt("renderWithout: artist", artist, 0, r.artists.length - 1);
   return renderTopmost(r, (i) => !muted.has(r.evArtist[i]));
 }
 
@@ -261,11 +292,16 @@ export function toRGBA(
   area: number,
   background: Background = "background",
 ): Uint8Array {
+  if (palette.length === 0) throw new RangeError("toRGBA: palette is empty");
+
   const out = new Uint8Array(area * 4);
   const base = background === "background" ? palette[0] : undefined;
 
   for (let p = 0; p < area; p++) {
     const c = layer.color[p];
+    // A colour index past the end of the palette is bad data from the chain,
+    // not a caller error, so it is left transparent rather than guessed at —
+    // one stray pixel must not fail a whole canvas.
     const rgb = c === UNPAINTED ? base : palette[c];
     if (!rgb) continue;
     out[p * 4] = rgb[0];

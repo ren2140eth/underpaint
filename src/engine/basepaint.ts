@@ -82,13 +82,21 @@ export async function fetchStrokes(day: number): Promise<Stroke[]> {
 
 /** "#DDCF99,#CCA87B,..." -> [[221,207,153], ...] */
 export function parsePalette(palette: string): [number, number, number][] {
-  return palette
+  const colours = palette
     .split(",")
     .map((s) => s.trim().replace(/^#/, ""))
     .filter(Boolean)
-    .map((h) => [
-      parseInt(h.slice(0, 2), 16),
-      parseInt(h.slice(2, 4), 16),
-      parseInt(h.slice(4, 6), 16),
-    ]);
+    .map((h) => {
+      // Silently producing NaN here would render as a black canvas and look
+      // like a replay bug, so a malformed palette fails loudly instead.
+      if (!/^[0-9a-fA-F]{6}$/.test(h)) throw new Error(`palette: bad colour "${h}"`);
+      return [
+        parseInt(h.slice(0, 2), 16),
+        parseInt(h.slice(2, 4), 16),
+        parseInt(h.slice(4, 6), 16),
+      ] as [number, number, number];
+    });
+
+  if (colours.length === 0) throw new Error("palette: no colours");
+  return colours;
 }

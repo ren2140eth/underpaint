@@ -10,7 +10,14 @@ at all.
 
 Underpaint replays every stroke of any canvas so you can see what's underneath.
 
-## What it does
+## Status
+
+**The replay engine is built and verified. The interface below is in
+progress** — being built for the [BasePaint hackathon](https://basepaint.xyz/hack),
+deadline 8 August 2026. Today the repo is the engine plus its correctness
+proof; nothing in the next section is clickable yet.
+
+## The interface, in progress
 
 - **X-ray** — scrub through the day, peel paint layers back one at a time, solo
   or mute individual artists, or promote the buried underpainting to the
@@ -27,9 +34,13 @@ changes.
 
 ## Verified against the real artwork
 
-The replay is checked by re-deriving each canvas's final image from its strokes
-and comparing it pixel-for-pixel with the artwork BasePaint published at
-`basepaint.net`:
+Two layers of checking. `npm test` runs offline unit fixtures over every render
+mode — time scrubbing, layer peeling, solo, mute, underpainting, attribution,
+pixel histories, and the malformed-blob paths.
+
+`npm run verify` is the proof that matters: it re-derives each canvas's final
+image from its strokes and compares it pixel-for-pixel with the artwork
+BasePaint published at `basepaint.net`:
 
 ```
 $ npm run verify
@@ -55,6 +66,7 @@ GraphQL indexer; there is no backend and nothing is stored server-side.
 src/engine/basepaint.ts   GraphQL client (paginated, BigInt id ordering)
 src/engine/replay.ts      stroke replay + all render modes
 scripts/verify.ts         correctness proof against published artwork
+test/                     offline unit fixtures for every render mode
 ```
 
 ## A note on "survival"
