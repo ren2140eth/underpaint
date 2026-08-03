@@ -13,3 +13,5 @@ data/strokes/
 
 # internal planning docs — this repo is public (see public-repo-prod-code-only)
 docs/superpowers/
+# empty today, but /plan writes specs and briefs here; never publish them
+specs/
