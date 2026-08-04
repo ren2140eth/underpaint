@@ -1,106 +1,94 @@
 # Underpaint
 
-**Most of the work in a BasePaint canvas is invisible.**
+**Much of the work in a BasePaint canvas sits beneath the finished image.**
 
-BasePaint artists share one grid for 24 hours and paint over each other
-constantly. The artwork that gets minted is the top coat of that stack. On day
-1080, 68 artists placed 139,618 pixels onto a 65,536-pixel canvas — **57.4% of
-that work sits under later coats**, where the finished image is built on top of
-it.
+BasePaint artists share one grid for 24 hours, building on and painting over one
+another's work. The minted artwork is the top coat of that history. On day 1080,
+68 artists placed 139,618 pixels on a 65,536-pixel canvas. **Later coats covered
+57.4% of those placements.**
 
 Underpaint replays every stroke of any canvas so you can see what's underneath.
 
 ![Day 1080 with one coat stripped away: entirely different characters, and the
 visible-artist count rising from 36 to 57](screenshots/underpainting.png)
 
-*Day 1080, one coat down. Different animals entirely. 29 artists who own nothing
-in the finished piece own something here — and 8 who are visible on the surface
-vanish, because everything they painted was laid down once and never covered.
-The checkerboard is where nothing was buried.*
+*Day 1080, one coat down. Contributions from 29 artists reappear, while work from
+8 surface artists falls away because it had no earlier coat beneath it. The
+checkerboard marks pixels with no buried layer.*
 
 ## What it does
 
 ### X-ray
 
-Scrub through the day, peel coats back one at a time, solo or mute individual
-artists, or promote the buried underpainting to the surface. Every control is a
-filter on the same per-pixel event stack, so they compose: "hour 14, two coats
-down, without these three artists" is one image, not three.
+Scrub through the day, peel back coats, isolate or hide individual artists, and
+bring the underpainting forward. The controls combine against the same
+per-pixel history, so hour 14, two coats down, without selected artists is one
+composition.
 
 ![The x-ray on day 1080 showing the finished artwork and the artist
 panel](screenshots/xray.png)
 
-Beside it, a live attribution panel: every artist who painted here, ranked by
-what they own *right now*. Change a control and the ranking changes. Artists
-whose paint is entirely buried keep their row — they are the point.
+The attribution panel lists every participating artist and updates with the
+current view. Artists whose contributions are fully covered remain in the panel
+so their work can still be explored.
 
 ### Core sample
 
-Hover any pixel to pull its full stack out as a column of swatches, oldest coat
-at the bottom, surviving paint on top. It reads like a geological core, which is
-what a palimpsest is.
+Hover over any pixel to see its complete stack: the earliest coat at the bottom
+and the surface coat at the top.
 
 ![A pinned core sample on day 131 showing 85 coats over 8,104 paint
 events](screenshots/core-sample.png)
 
-Coats are runs of one colour from one hand, not raw paint events — a brush
-dragged over its own path repaints a pixel without laying anything new down.
-The deepest pixel in the archive took **8,104 paint events**, which is 85 coats.
-On the median canvas the most-worked pixel is touched by 19 separate strokes;
-on day 382 one pixel was touched by 271.
+A coat is a continuous run of one colour by one artist, not an individual paint
+event. This prevents a brush crossing its own path from creating false layers.
+The deepest pixel in the archive records **8,104 paint events** across 85 coats.
+On the median canvas, the most-worked pixel appears in 19 strokes; on day 382,
+one pixel appears in 271.
 
 ### Remix
 
-**Remix palette** repaints a canvas in another canvas's colours — same paint,
-same hands, someone else's palette. BasePaint palettes run from 2 to 24 colours,
-so indices are mapped proportionally: first to first, last to last, everything
-between in proportion. Palettes are mostly ordered light to dark, so the artwork
-keeps its tonal structure and changes only its hue.
+**Remix palette** applies another canvas's colours while preserving the original
+paint and attribution. Because BasePaint palettes contain 2 to 24 colours,
+Underpaint maps their ranges proportionally to retain the artwork's tonal
+structure.
 
-The roll happens on click and the result is a fixed day in the URL, so a remix
-link reproduces exactly rather than re-rolling for whoever opens it.
+Each remix records its palette day in the URL, so shared links reproduce the
+same result.
 
 ### Paint
 
-Compose a variation — wind the day back, strip some coats, wear another
-canvas's colours — then **paint** on it and finish it however you like. Your
-coat sits on top of whatever you composed, and a remix recolours your work
-along with everyone else's: it's paint on the same canvas, not a sticker over
-it.
+Compose a variation by changing time, coats, artists, or palette, then **paint**
+on top. Palette remixes recolour your additions with the rest of the canvas.
 
-The brush keeps a borrowed palette, though. **Own colours** puts the canvas
-back into its own and leaves your coat in the palette the remix handed it, so
-you can paint day 195's colours onto day 131 — remix until something catches
-your eye, then take just the colours. **Brush: own colours** in the paint tray
-hands them back. Both palettes are resampled to the canvas's own colour count,
-so a four-colour canvas borrows four colours, not the lender's full set.
+The brush can keep a borrowed palette after **Own colours** restores the canvas,
+letting you paint one day's colours onto another. **Brush: own colours** restores
+the original brush palette. Borrowed palettes are resampled to the canvas's
+colour count.
 
-The artist panel counts your pixels honestly. Everyone's share is a fraction of
-what's actually visible, so covering someone's work lowers their number — you
-are one of the hands now.
+The attribution panel includes your pixels in the visible total and updates each
+artist's displayed share as you paint.
 
-A painting rides in the link as a BasePaint-format `XXYYCC` blob, the same
-triplets the chain stores. Past about 1,300 pixels it stops fitting in a URL;
-the canvas and the PNG keep every pixel and the page says so, rather than
-truncating your work into a different picture.
+Paint is encoded in the link as BasePaint-format `XXYYCC` triplets. Above roughly
+1,300 pixels it no longer fits safely in a URL, but remains intact on the canvas
+and in PNG exports.
 
 ### Archive
 
-All 1,089 settled canvases, sortable by figures derived from the strokes:
-buried labour, coverage, paint depth, artist concentration, late surge, and what
-each canvas earned. **62.1% of all painting in BasePaint history is buried.**
+The archive contains 1,089 settled canvases, sortable by covered paint,
+coverage, depth, artist concentration, late activity, and earnings. **Later
+layers cover 62.1% of all recorded painting in BasePaint history.**
 
 ![The archive sorted by buried share, with Ship of Theseus at
 92%](screenshots/archive.png)
 
-The most buried canvas ever made is day 569, *Ship of Theseus*, at 92.0% — 19%
-coverage and 12.5 coats on the average painted pixel. It is aptly named.
+Day 569, *Ship of Theseus*, has the archive's highest covered share at 92.0%,
+with 19% coverage and an average depth of 12.5 coats per painted pixel.
 
 ## Links are recipes, not files
 
-Every variation encodes itself into the URL, and the canvas is replayed from the
-strokes when the link is opened. Nothing is stored, and the same link always
-produces the same image.
+Each variation is encoded in its URL and rebuilt from the strokes when opened.
+Nothing is stored server-side, and the same link produces the same image.
 
 ```
 /canvas/1080?t=1784875315&p=2&c=102&b=102&s=8&n=68&d=1f2a03…
@@ -113,25 +101,22 @@ produces the same image.
              └──────────────────────────────────────── as it stood at hour 14
 ```
 
-`solo` and `muted` are indices into the canvas's artist list, which is built in
-order of first appearance. That is deterministic for a settled canvas, but it is
-not self-describing — so links carry the cast size they were made under. If it
-no longer matches, the artist controls are dropped and you are told, rather than
-being shown the wrong person's work.
+`solo` and `muted` are indices into the canvas's artist list, ordered by first
+appearance. That order is stable for a settled canvas but not self-describing,
+so links also carry the artist count. If it changes, Underpaint removes the
+artist-specific controls instead of applying them to the wrong person.
 
 **Download PNG** exports whatever is on screen, upscaled by a whole number so
 the pixels stay square, with the recipe in the filename.
 
 ## Verified against the real artwork
 
-Two layers of checking. `npm test` runs 172 offline unit fixtures over every
-render mode — time scrubbing, coat peeling, solo, mute, underpainting,
-attribution, the artist roster, pixel histories, recipe encoding, palette
-remapping, brush geometry, and the malformed-blob paths.
+`npm test` runs 172 offline fixtures covering render modes, attribution, artist
+rosters, pixel histories, URL recipes, palette mapping, brush geometry, and
+malformed input.
 
-`npm run verify` is the proof that matters. It re-derives each canvas's final
-image from its strokes and compares it pixel-for-pixel with the artwork
-BasePaint published at `basepaint.net`:
+`npm run verify` reconstructs selected canvases from their strokes and compares
+them pixel-for-pixel with the artwork published at `basepaint.net`:
 
 ```
 $ npm run verify
@@ -177,17 +162,13 @@ is 978 KB, the archive's strokes are hundreds of megabytes.
 
 ## A note on buried paint
 
-Buried is not a bad score, and a high buried share is not a flaw in the canvas
-or in BasePaint. Painting over each other is the game as designed and as
-documented — that shared grid is the whole point of it, and every artist can
-see the rules going in.
+Covered paint is not a negative score or a flaw. Building on one another's work
+is central to BasePaint's shared canvas.
 
-An artist who lays down 7,000 pixels of base layer in hour 3 is doing the work
-the finished image is built on — that's underpainting, and it's why the canvas
-looks like anything at all. On day 1080 the two busiest hands on the canvas
-placed 7,000 and 6,999 pixels, and both are entirely under later coats.
-Underpaint shows these numbers as facts about how a canvas was made, and
-deliberately does not rank artists by them.
+Early and intermediate layers shape what comes next, even when later paint
+covers them. On day 1080, two of the most active artists placed 7,000 and 6,999
+pixels, all beneath later coats. Underpaint presents this history to show how the
+canvas developed, not to score the artists who made it.
 
 ## Licence
 
