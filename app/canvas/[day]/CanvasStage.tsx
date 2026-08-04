@@ -10,6 +10,8 @@ interface Props {
   replay: Replay;
   layer: Layer;
   palette: [number, number, number][];
+  /** what the visitor's own pixels wear, when their brush has left the canvas's palette */
+  brushPalette: [number, number, number][];
   /** untouched pixels read as absent in the x-ray, opaque in the final image */
   transparent: boolean;
   /** start of the canvas's 24h window, for elapsed-time readouts */
@@ -49,6 +51,7 @@ export default function CanvasStage({
   replay,
   layer,
   palette,
+  brushPalette,
   transparent,
   dayStart,
   painting,
@@ -80,9 +83,15 @@ export default function CanvasStage({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const rgba = toRGBA(layer, palette, replay.area, transparent ? "transparent" : "background");
+    const rgba = toRGBA(
+      layer,
+      palette,
+      replay.area,
+      transparent ? "transparent" : "background",
+      brushPalette,
+    );
     ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), replay.size, replay.size), 0, 0);
-  }, [layer, palette, replay.area, replay.size, transparent]);
+  }, [layer, palette, brushPalette, replay.area, replay.size, transparent]);
 
   const locate = useCallback(
     (event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {

@@ -64,9 +64,16 @@ link reproduces exactly rather than re-rolling for whoever opens it.
 
 Compose a variation — wind the day back, strip some coats, wear another
 canvas's colours — then **paint** on it and finish it however you like. Your
-coat sits on top of whatever you composed, in the palette that's active, so a
-remix recolours your work along with everyone else's: it's paint on the same
-canvas, not a sticker over it.
+coat sits on top of whatever you composed, and a remix recolours your work
+along with everyone else's: it's paint on the same canvas, not a sticker over
+it.
+
+The brush keeps a borrowed palette, though. **Own colours** puts the canvas
+back into its own and leaves your coat in the palette the remix handed it, so
+you can paint day 195's colours onto day 131 — remix until something catches
+your eye, then take just the colours. **Brush: own colours** in the paint tray
+hands them back. Both palettes are resampled to the canvas's own colour count,
+so a four-colour canvas borrows four colours, not the lender's full set.
 
 The artist panel counts your pixels honestly. Everyone's share is a fraction of
 what's actually visible, so covering someone's work lowers their number — you
@@ -96,13 +103,14 @@ strokes when the link is opened. Nothing is stored, and the same link always
 produces the same image.
 
 ```
-/canvas/1080?t=1784875315&p=2&c=102&s=8&n=68&d=1f2a03…
-             │             │    │     │   │   └─ your own coat, XXYYCC per pixel
-             │             │    │     │   └───── the cast this link was made under
-             │             │    │     └───────── showing only artist 8
-             │             │    └─────────────── in day 102's palette
-             │             └──────────────────── two coats stripped
-             └────────────────────────────────── as it stood at hour 14
+/canvas/1080?t=1784875315&p=2&c=102&b=102&s=8&n=68&d=1f2a03…
+             │            │   │     │     │   │    └─ your own coat, XXYYCC per pixel
+             │            │   │     │     │   └────── the cast this link was made under
+             │            │   │     │     └────────── showing only artist 8
+             │            │   │     └──────────────── your brush in day 102's palette
+             │            │   └────────────────────── the canvas in day 102's palette
+             │            └─────────────────────────── two coats stripped
+             └──────────────────────────────────────── as it stood at hour 14
 ```
 
 `solo` and `muted` are indices into the canvas's artist list, which is built in

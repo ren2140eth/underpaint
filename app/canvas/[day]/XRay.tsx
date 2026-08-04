@@ -126,6 +126,7 @@ export default function XRay({ row, prev, next }: Props) {
   }, [palettes]);
 
   const worn = view.paletteDay === null ? null : (palettes?.get(view.paletteDay) ?? null);
+  const brushWorn = view.brushDay === null ? null : (palettes?.get(view.brushDay) ?? null);
 
   /**
    * The canvas's own colours, or another day's stretched to fit. Indexed by
@@ -135,6 +136,16 @@ export default function XRay({ row, prev, next }: Props) {
     if (!worn || ownPalette.length === 0) return ownPalette;
     return remapPalette(ownPalette.length, parsePalette(worn.colours));
   }, [ownPalette, worn]);
+
+  /**
+   * What the visitor's own coat is wearing. Falls back to the canvas's palette,
+   * so a brush that has not been sent anywhere behaves exactly as before —
+   * including following a remix that arrived by link rather than by button.
+   */
+  const brushPalette = useMemo(() => {
+    if (!brushWorn || ownPalette.length === 0) return palette;
+    return remapPalette(ownPalette.length, parsePalette(brushWorn.colours));
+  }, [ownPalette, brushWorn, palette]);
 
   /**
    * On load the canvas assembles itself out of its own buried coats: start
@@ -165,10 +176,15 @@ export default function XRay({ row, prev, next }: Props) {
   );
 
   /** The view the page was opened on, once the cast is known well enough to check it. */
-  const opening = useMemo(
-    () => (r ? decodeView(recipe, r.artists.length) : null),
-    [r, recipe],
-  );
+  const opening = useMemo(() => {
+    if (!r) return null;
+    const decoded = decodeView(recipe, r.artists.length);
+    // A link asking the brush to wear this canvas's own palette is asking for
+    // nothing: it renders identically, and carrying it would put a note on
+    // screen about colours that are already the ones being used.
+    if (decoded.view.brushDay !== row.day) return decoded;
+    return { ...decoded, view: { ...decoded.view, brushDay: null } };
+  }, [r, recipe, row.day]);
   /**
    * Did a link put us here? That is "is the recipe non-empty", not "is the
    * paint altered" — a palette remix leaves every pixel where it was but is
@@ -313,7 +329,10 @@ export default function XRay({ row, prev, next }: Props) {
       const days = [...map.keys()].filter((d) => d !== row.day && d !== view.paletteDay);
       if (days.length === 0) return;
       setPaletteError(false);
-      changeView({ ...view, paletteDay: days[Math.floor(Math.random() * days.length)] });
+      // The roll lands on the canvas and the brush together: a remix recolours
+      // the visitor's coat along with everyone else's, as it always has.
+      const rolled = days[Math.floor(Math.random() * days.length)];
+      changeView({ ...view, paletteDay: rolled, brushDay: rolled });
     } catch {
       setPaletteError(true);
     } finally {
@@ -321,9 +340,10 @@ export default function XRay({ row, prev, next }: Props) {
     }
   }, [loadPalettes, row.day, view, changeView]);
 
-  // A link can arrive already wearing a palette, before anything is loaded.
+  // A link can arrive already wearing a palette — on the canvas, on the brush,
+  // or on both — before anything is loaded.
   useEffect(() => {
-    if (view.paletteDay === null || palettes) return;
+    if ((view.paletteDay === null && view.brushDay === null) || palettes) return;
     let live = true;
     loadPalettes().then(
       () => live && setPaletteError(false),
@@ -332,7 +352,7 @@ export default function XRay({ row, prev, next }: Props) {
     return () => {
       live = false;
     };
-  }, [view.paletteDay, palettes, loadPalettes]);
+  }, [view.paletteDay, view.brushDay, palettes, loadPalettes]);
 
   /**
    * A recipe is a string a stranger typed, and `decodeView` deliberately leaves
@@ -342,11 +362,17 @@ export default function XRay({ row, prev, next }: Props) {
    * that does not exist.
    */
   useEffect(() => {
-    const day = view.paletteDay;
-    if (day === null || !palettes || palettes.has(day)) return;
-    setUnknownPalette(day);
-    setView((v) => (v.paletteDay === day ? { ...v, paletteDay: null } : v));
-  }, [view.paletteDay, palettes]);
+    if (!palettes) return;
+    const missing = (d: number | null) => d !== null && !palettes.has(d);
+    if (!missing(view.paletteDay) && !missing(view.brushDay)) return;
+
+    setUnknownPalette(missing(view.paletteDay) ? view.paletteDay : view.brushDay);
+    setView((v) => ({
+      ...v,
+      paletteDay: missing(v.paletteDay) ? null : v.paletteDay,
+      brushDay: missing(v.brushDay) ? null : v.brushDay,
+    }));
+  }, [view.paletteDay, view.brushDay, palettes]);
 
   const copyLink = useCallback(() => {
     const { origin, pathname } = window.location;
@@ -370,7 +396,13 @@ export default function XRay({ row, prev, next }: Props) {
 
     const scale = Math.max(1, Math.round(1024 / r.size));
     const wide = r.size * scale;
-    const rgba = toRGBA(layer, palette, r.area, altered ? "transparent" : "background");
+    const rgba = toRGBA(
+      layer,
+      palette,
+      r.area,
+      altered ? "transparent" : "background",
+      brushPalette,
+    );
 
     const canvas = document.createElement("canvas");
     canvas.width = wide;
@@ -396,7 +428,7 @@ export default function XRay({ row, prev, next }: Props) {
       // Revoking in the same tick races the browser's own read of the blob.
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
     }, "image/png");
-  }, [r, layer, palette, altered, view, row.day]);
+  }, [r, layer, palette, brushPalette, altered, view, row.day]);
 
   return (
     <div className={styles.page}>
@@ -476,6 +508,7 @@ export default function XRay({ row, prev, next }: Props) {
               replay={r}
               layer={layer}
               palette={palette}
+              brushPalette={brushPalette}
               transparent={altered}
               dayStart={dayWindow(row.day).start}
               painting={painting}
@@ -494,12 +527,18 @@ export default function XRay({ row, prev, next }: Props) {
 
           {r && painting && (
             <div className={styles.studio}>
-              <div className={styles.swatches} role="group" aria-label="Colour">
-                {palette.map((c, i) => (
+              <div
+                className={styles.swatches}
+                role="group"
+                aria-label={
+                  view.brushDay === null ? "Colour" : `Colour, from day ${view.brushDay}'s palette`
+                }
+              >
+                {brushPalette.map((c, i) => (
                   <button
                     key={i}
                     type="button"
-                    aria-label={`Colour ${i + 1} of ${palette.length}`}
+                    aria-label={`Colour ${i + 1} of ${brushPalette.length}`}
                     aria-pressed={colour === i}
                     className={colour === i ? styles.swatchOn : styles.swatch}
                     style={{ background: `rgb(${c[0]},${c[1]},${c[2]})` }}
@@ -536,6 +575,17 @@ export default function XRay({ row, prev, next }: Props) {
                 >
                   Clear
                 </button>
+                {/* Without this a remix would be one-way: the canvas can be put
+                    back into its own colours, and the brush needs the same. */}
+                {view.brushDay !== null && (
+                  <button
+                    type="button"
+                    className={styles.preset}
+                    onClick={() => changeView({ ...view, brushDay: null })}
+                  >
+                    Brush: own colours
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -596,6 +646,18 @@ export default function XRay({ row, prev, next }: Props) {
               </Link>
               . Same paint, same hands, {ownPalette.length} colours mapped onto{" "}
               {worn.colours.split(",").length}.
+            </p>
+          )}
+
+          {/* Only worth saying when the brush has gone its own way — while the
+              two agree, the remix caption above has already said it. */}
+          {r && view.brushDay !== null && view.brushDay !== view.paletteDay && brushWorn && (
+            <p className={styles.remixed}>
+              Painting in the colours of{" "}
+              <Link href={`/canvas/${view.brushDay}`} className={styles.remixLink}>
+                day {view.brushDay}, {brushWorn.name}
+              </Link>
+              . The canvas keeps its own; your coat does not.
             </p>
           )}
 

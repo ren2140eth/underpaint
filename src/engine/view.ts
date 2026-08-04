@@ -50,6 +50,21 @@ export interface View {
    * identifier, the palette is in the committed index, and a link stays short.
    */
   paletteDay: number | null;
+  /**
+   * Repaint the *visitor's own coat* in another day's palette; null to follow
+   * whatever the canvas is wearing.
+   *
+   * A remix sets this alongside `paletteDay`, so a borrowed palette arrives on
+   * the brush and the canvas together. Putting the canvas back into its own
+   * colours clears only `paletteDay`, which leaves the brush holding the
+   * borrowed one — the point being that someone can paint in day 382's colours
+   * on a canvas showing its own.
+   *
+   * Resolved against the same index space as the canvas palette: both are
+   * remapped to this canvas's colour count, so a stored paint index means
+   * something in either.
+   */
+  brushDay: number | null;
 }
 
 export const WHOLE_CANVAS: View = {
@@ -58,6 +73,7 @@ export const WHOLE_CANVAS: View = {
   solo: null,
   muted: new Set(),
   paletteDay: null,
+  brushDay: null,
 };
 
 /**
@@ -146,6 +162,10 @@ export function isAltered(view: View): boolean {
  *
  * `paintedPixels` is the visitor's own coat, which is content rather than a
  * control and so lives outside the View.
+ *
+ * `brushDay` is ignored on purpose: it only decides what colour the visitor's
+ * next stroke will be. With no paint on the canvas it changes nothing on
+ * screen, and with paint on the canvas `paintedPixels` has already answered.
  */
 export function isComposed(view: View, paintedPixels = 0): boolean {
   return isAltered(view) || view.paletteDay !== null || paintedPixels > 0;
@@ -182,6 +202,7 @@ export function encodeView(view: View, artistCount: number): string {
   if (view.until !== null) parts.push(`t=${view.until}`);
   if (view.peel > 0) parts.push(`p=${view.peel}`);
   if (view.paletteDay !== null) parts.push(`c=${view.paletteDay}`);
+  if (view.brushDay !== null) parts.push(`b=${view.brushDay}`);
   if (view.solo !== null) parts.push(`s=${view.solo}`);
   if (view.muted.size > 0) {
     parts.push(`m=${[...view.muted].sort((a, b) => a - b).join(".")}`);
@@ -215,6 +236,14 @@ export function decodeView(search: string, artistCount: number): DecodedView {
   const paletteDay = Number(params.get("c"));
   if (params.has("c") && Number.isInteger(paletteDay) && paletteDay > 0) {
     view.paletteDay = paletteDay;
+  }
+
+  // Same rules for the brush, which wears a palette independently of the
+  // canvas. A link naming this canvas's own day is left to the caller too: it
+  // is a valid day and renders identically, just not worth announcing.
+  const brushDay = Number(params.get("b"));
+  if (params.has("b") && Number.isInteger(brushDay) && brushDay > 0) {
+    view.brushDay = brushDay;
   }
 
   // A recipe made under a different cast cannot be trusted about who is who.

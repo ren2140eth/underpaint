@@ -20,6 +20,17 @@ export interface PaintEvent {
 
 export const UNPAINTED = -1;
 
+/**
+ * Owner marker for the visitor's own paint.
+ *
+ * Lives here rather than in paint.ts because it is a value in `Layer.owner`,
+ * which this module defines, and because rendering has to know it: the
+ * visitor's coat can be wearing a different palette from the rest of the
+ * canvas. Distinct from UNPAINTED so bare canvas and a visitor's pixel are
+ * never confused, and negative so it cannot collide with an artist's index.
+ */
+export const YOURS = -2;
+
 /** One pixel: XXYYCC. Anything else in a blob is not paint. */
 const TRIPLET = /^[0-9a-fA-F]{6}$/;
 
@@ -406,6 +417,12 @@ export function toRGBA(
   palette: [number, number, number][],
   area: number,
   background: Background = "background",
+  /**
+   * The palette to resolve the visitor's own pixels against, when their brush
+   * is wearing colours the canvas is not. Omit and every pixel reads from
+   * `palette`, which is what a canvas with no visitor paint on it wants.
+   */
+  brushPalette?: [number, number, number][],
 ): Uint8Array {
   if (palette.length === 0) throw new RangeError("toRGBA: palette is empty");
 
@@ -417,7 +434,8 @@ export function toRGBA(
     // A colour index past the end of the palette is bad data from the chain,
     // not a caller error, so it is left transparent rather than guessed at —
     // one stray pixel must not fail a whole canvas.
-    const rgb = c === UNPAINTED ? base : palette[c];
+    const from = brushPalette !== undefined && layer.owner[p] === YOURS ? brushPalette : palette;
+    const rgb = c === UNPAINTED ? base : from[c];
     if (!rgb) continue;
     out[p * 4] = rgb[0];
     out[p * 4 + 1] = rgb[1];

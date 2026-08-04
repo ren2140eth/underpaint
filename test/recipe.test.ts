@@ -84,6 +84,46 @@ describe("isComposed", () => {
   });
 });
 
+describe("the brush's own palette in a recipe", () => {
+  it("encodes as b, just after the canvas's own palette", () => {
+    assert.equal(encodeView(view({ brushDay: 382 }), CAST), "b=382");
+    assert.equal(
+      encodeView(view({ paletteDay: 7, brushDay: 382 }), CAST),
+      "c=7&b=382",
+    );
+  });
+
+  it("round-trips independently of the canvas palette", () => {
+    // The whole point of the field: the canvas back in its own colours while
+    // the brush keeps the one the remix handed it.
+    const brushOnly = view({ brushDay: 382 });
+    assert.deepEqual(decodeView(encodeView(brushOnly, CAST), CAST).view, brushOnly);
+  });
+
+  it("drops a brush day that is not a positive integer", () => {
+    for (const junk of ["0", "-4", "1.5", "abc", ""]) {
+      assert.equal(decodeView(`?b=${junk}`, CAST).view.brushDay, null);
+    }
+  });
+
+  it("survives a stale cast, which is only about artists", () => {
+    const decoded = decodeView("?b=382&s=3&n=99", CAST);
+    assert.equal(decoded.stale, true);
+    assert.equal(decoded.view.brushDay, 382);
+    assert.equal(decoded.view.solo, null);
+  });
+
+  it("is not a change to the artwork, so neither predicate counts it", () => {
+    // A brush palette with nothing painted yet looks exactly like the canvas
+    // as minted, and the page must go on saying so.
+    const brush = view({ brushDay: 382 });
+    assert.equal(isAltered(brush), false);
+    assert.equal(isComposed(brush), false);
+    // Once there is paint, it is the paint that makes it a composition.
+    assert.equal(isComposed(brush, 1), true);
+  });
+});
+
 describe("palette remix in a recipe", () => {
   it("encodes the canvas whose palette is being worn", () => {
     assert.equal(encodeView(view({ paletteDay: 382 }), CAST), "c=382");

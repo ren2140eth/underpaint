@@ -10,22 +10,24 @@
  * canvas is: a remix then recolours the visitor's work along with everyone
  * else's, because it is paint on the same canvas rather than a sticker on top.
  *
+ * The palette those indices are read against is not always the canvas's own.
+ * A remix hands the visitor the borrowed palette to paint with, and putting the
+ * canvas back into its own colours leaves the brush where it was — so someone
+ * can paint in one canvas's colours on top of another. The indices are the same
+ * either way; `View.brushDay` decides which palette resolves them.
+ *
  * It rides in a link as a BasePaint-format blob — the same `XXYYCC` triplets
  * the chain stores — so a shared painting stays a recipe.
  */
 
-import type { Layer } from "./replay";
+import { type Layer, YOURS } from "./replay";
 
 /** Pixel index to palette colour index. Sparse: most of a canvas is untouched. */
 export type Paint = ReadonlyMap<number, number>;
 
-/**
- * Owner marker for the visitor's paint.
- *
- * Distinct from UNPAINTED (-1) so bare canvas and a visitor's pixel are never
- * confused, and negative so it can never collide with a real artist's index.
- */
-export const YOURS = -2;
+// The marker for the visitor's pixels is defined next to Layer, which owns the
+// array it goes in, and re-exported here because this is where paint is made.
+export { YOURS };
 
 const TRIPLET = /^[0-9a-fA-F]{6}$/;
 const byte = (n: number) => n.toString(16).padStart(2, "0");

@@ -32,6 +32,7 @@ import {
   scalePixels,
   toRGBA,
 } from "../src/engine/replay";
+import { applyPaint } from "../src/engine/paint";
 
 const SIZE = 4;
 const A = "0xAAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaA";
@@ -477,5 +478,50 @@ describe("toRGBA", () => {
   it("rejects an empty palette", () => {
     const r = replay(fixture(), SIZE);
     assert.throws(() => toRGBA(renderFinal(r), [], r.area), /palette/);
+  });
+
+  describe("when the visitor's brush wears another palette", () => {
+    // Deliberately the same indices in both, so any difference in the output is
+    // the palette being chosen and not the colour index.
+    const brush: [number, number, number][] = [
+      [200, 0, 0],
+      [201, 0, 0],
+      [202, 0, 0],
+      [203, 0, 0],
+      [204, 0, 0],
+    ];
+
+    /** The canvas, with one pixel overpainted by the visitor in colour 4. */
+    const withYours = () => {
+      const r = replay(fixture(), SIZE);
+      const layer = applyPaint(renderFinal(r), new Map([[at(0, 0), 4]]), r.area);
+      return { r, layer };
+    };
+
+    it("reads the visitor's pixels from the brush palette", () => {
+      const { r, layer } = withYours();
+      const out = toRGBA(layer, palette, r.area, "background", brush);
+      const p = at(0, 0) * 4;
+      assert.deepEqual([...out.slice(p, p + 4)], [204, 0, 0, 255]);
+    });
+
+    it("leaves every other pixel on the canvas palette", () => {
+      const { r, layer } = withYours();
+      const out = toRGBA(layer, palette, r.area, "background", brush);
+      // C's pixel at (2,1) is colour 4 — the same index the visitor used, so
+      // this fails if the brush palette leaks past the visitor's own pixels.
+      const q = at(2, 1) * 4;
+      assert.deepEqual([...out.slice(q, q + 4)], [68, 68, 68, 255]);
+      // And an untouched pixel still takes the canvas's background.
+      const bare = at(3, 3) * 4;
+      assert.deepEqual([...out.slice(bare, bare + 4)], [0, 0, 0, 255]);
+    });
+
+    it("falls back to the canvas palette when no brush palette is given", () => {
+      const { r, layer } = withYours();
+      const out = toRGBA(layer, palette, r.area);
+      const p = at(0, 0) * 4;
+      assert.deepEqual([...out.slice(p, p + 4)], [68, 68, 68, 255]);
+    });
   });
 });
