@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type Stroke, dayWindow, fetchStrokes, parsePalette } from "../../../src/engine/basepaint";
+import {
+  type Stroke,
+  dayWindow,
+  fetchStrokes,
+  parsePalette,
+  remapPalette,
+} from "../../../src/engine/basepaint";
 import { type Replay, replay, scalePixels, toRGBA } from "../../../src/engine/replay";
 import type { CanvasStats } from "../../../src/engine/stats";
 import {
@@ -61,10 +67,39 @@ export default function XRay({ row, prev, next }: Props) {
     [strokes, row.size],
   );
 
-  const palette = useMemo(
+  const ownPalette = useMemo(
     () => (row.palette ? parsePalette(row.palette) : []),
     [row.palette],
   );
+
+  /**
+   * Every canvas's palette, fetched only when someone remixes or arrives on a
+   * link that already names one. Putting all 1,090 into every page would cost
+   * 43 KB gzipped on 1,090 pages for a control most visitors never touch.
+   */
+  const [palettes, setPalettes] = useState<Map<number, { name: string; colours: string }> | null>(
+    null,
+  );
+  const [remixing, setRemixing] = useState(false);
+
+  const loadPalettes = useCallback(async () => {
+    if (palettes) return palettes;
+    const rows: [number, string, string][] = await (await fetch("/palettes.json")).json();
+    const map = new Map(rows.map(([day, name, colours]) => [day, { name, colours }]));
+    setPalettes(map);
+    return map;
+  }, [palettes]);
+
+  const worn = view.paletteDay === null ? null : (palettes?.get(view.paletteDay) ?? null);
+
+  /**
+   * The canvas's own colours, or another day's stretched to fit. Indexed by
+   * this canvas's own colour numbers either way, so nothing downstream changes.
+   */
+  const palette = useMemo(() => {
+    if (!worn || ownPalette.length === 0) return ownPalette;
+    return remapPalette(ownPalette.length, parsePalette(worn.colours));
+  }, [ownPalette, worn]);
 
   /**
    * On load the canvas assembles itself out of its own buried coats: start
@@ -102,13 +137,22 @@ export default function XRay({ row, prev, next }: Props) {
     () => (r ? decodeView(recipe, r.artists.length) : null),
     [r, recipe],
   );
-  const openedFromLink = opening !== null && isAltered(opening.view);
+  /**
+   * Did a link put us here? That is "is the recipe non-empty", not "is the
+   * paint altered" — a palette remix leaves every pixel where it was but is
+   * still a specific thing someone was sent, so the intro must not animate
+   * away from it.
+   */
+  const openedFromLink = useMemo(
+    () => (opening !== null && r !== null ? encodeView(opening.view, r.artists.length) !== "" : false),
+    [opening, r],
+  );
 
   useEffect(() => {
     if (!opening) return;
     setStaleRecipe(opening.stale);
-    if (isAltered(opening.view)) setView(opening.view);
-  }, [opening]);
+    if (openedFromLink) setView(opening.view);
+  }, [opening, openedFromLink]);
 
   useEffect(() => {
     if (!r) return;
@@ -139,6 +183,27 @@ export default function XRay({ row, prev, next }: Props) {
   const altered = isAltered(view);
 
   const [copied, setCopied] = useState(false);
+
+  /**
+   * A random other canvas's palette. The roll happens here and the result is a
+   * fixed day in the URL — a link that re-rolled on open would not be a recipe.
+   */
+  const remix = useCallback(async () => {
+    setRemixing(true);
+    try {
+      const map = await loadPalettes();
+      const days = [...map.keys()].filter((d) => d !== row.day && d !== view.paletteDay);
+      if (days.length === 0) return;
+      changeView({ ...view, paletteDay: days[Math.floor(Math.random() * days.length)] });
+    } finally {
+      setRemixing(false);
+    }
+  }, [loadPalettes, row.day, view, changeView]);
+
+  // A link can arrive already wearing a palette, before anything is loaded.
+  useEffect(() => {
+    if (view.paletteDay !== null && !palettes) void loadPalettes();
+  }, [view.paletteDay, palettes, loadPalettes]);
 
   const copyLink = useCallback(() => {
     navigator.clipboard.writeText(window.location.href).then(
@@ -287,12 +352,44 @@ export default function XRay({ row, prev, next }: Props) {
               <button type="button" className={styles.action} onClick={download}>
                 download png
               </button>
-              <span className={styles.actionNote}>
-                {altered
-                  ? "The link is a recipe: it names the controls, and the canvas is replayed from the strokes."
-                  : "The canvas as it was minted."}
-              </span>
+              <button
+                type="button"
+                className={styles.action}
+                onClick={remix}
+                disabled={remixing}
+              >
+                {remixing ? "remixing…" : "remix palette"}
+              </button>
+              {view.paletteDay !== null && (
+                <button
+                  type="button"
+                  className={styles.action}
+                  onClick={() => changeView({ ...view, paletteDay: null })}
+                >
+                  own colours
+                </button>
+              )}
             </div>
+          )}
+
+          {r && view.paletteDay !== null && (
+            <p className={styles.remixed}>
+              Repainted in the palette of{" "}
+              <Link href={`/canvas/${view.paletteDay}`} className={styles.remixLink}>
+                day {view.paletteDay}
+                {worn && `, ${worn.name}`}
+              </Link>
+              . Same paint, same hands, {ownPalette.length} colours mapped onto{" "}
+              {worn ? worn.colours.split(",").length : "?"}.
+            </p>
+          )}
+
+          {r && (
+            <p className={styles.actionNote}>
+              {altered
+                ? "The link is a recipe: it names the controls, and the canvas is replayed from the strokes."
+                : "The canvas as it was minted."}
+            </p>
           )}
 
           {staleRecipe && (

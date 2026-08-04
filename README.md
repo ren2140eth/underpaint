@@ -49,6 +49,17 @@ The deepest pixel in the archive took **8,104 paint events**, which is 85 coats.
 On the median canvas the most-worked pixel is touched by 19 separate strokes;
 on day 382 one pixel was touched by 271.
 
+### Remix
+
+**Remix palette** repaints a canvas in another canvas's colours — same paint,
+same hands, someone else's palette. BasePaint palettes run from 2 to 24 colours,
+so indices are mapped proportionally: first to first, last to last, everything
+between in proportion. Palettes are mostly ordered light to dark, so the artwork
+keeps its tonal structure and changes only its hue.
+
+The roll happens on click and the result is a fixed day in the URL, so a remix
+link reproduces exactly rather than re-rolling for whoever opens it.
+
 ### Archive
 
 All 1,089 settled canvases, sortable by things nothing else computes: buried
@@ -68,11 +79,12 @@ strokes when the link is opened. Nothing is stored, and the same link always
 produces the same image.
 
 ```
-/canvas/1080?t=1784875315&p=2&m=8&n=68
-             │             │    │    └─ the cast this link was made under
-             │             │    └────── artist 8 muted
-             │             └─────────── two coats stripped
-             └───────────────────────── as it stood at hour 14
+/canvas/1080?t=1784875315&p=2&c=102&s=8&n=68
+             │             │    │     │   └─ the cast this link was made under
+             │             │    │     └───── showing only artist 8
+             │             │    └─────────── in day 102's palette
+             │             └──────────────── two coats stripped
+             └────────────────────────────── as it stood at hour 14
 ```
 
 `solo` and `muted` are indices into the canvas's artist list, which is built in
@@ -86,7 +98,7 @@ the pixels stay square, with the recipe in the filename.
 
 ## Verified against the real artwork
 
-Two layers of checking. `npm test` runs 133 offline unit fixtures over every
+Two layers of checking. `npm test` runs 149 offline unit fixtures over every
 render mode — time scrubbing, coat peeling, solo, mute, underpainting,
 attribution, the artist roster, pixel histories, recipe encoding, and the
 malformed-blob paths.
@@ -121,15 +133,16 @@ GraphQL indexer; there is no backend, the site is statically exported, and
 nothing is stored server-side.
 
 ```
-src/engine/basepaint.ts    GraphQL client (paginated, BigInt id ordering)
+src/engine/basepaint.ts    GraphQL client, palettes, proportional remapping
 src/engine/replay.ts       stroke replay, render modes, coat grouping
 src/engine/view.ts         composed variations, artist roster, URL recipes
 src/engine/stats.ts        per-canvas statistics
 src/engine/index-table.ts  the archive's rows and sort order
 scripts/verify.ts          correctness proof against published artwork
 scripts/ingest.ts          precompute the canvas index
+scripts/palettes.ts        project the palette lookup the remix control fetches
 data/index.json            1,090 canvases, committed
-test/                      133 offline fixtures
+test/                      149 offline fixtures
 ```
 
 Strokes are fetched on demand and replayed in the browser — the committed index

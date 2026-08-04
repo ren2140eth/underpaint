@@ -29,12 +29,55 @@ describe("isAltered", () => {
     assert.equal(isAltered(view({ muted: new Set([0]) })), true);
   });
 
-  it("agrees with the recipe being empty", () => {
-    // The two are the same question — an untouched canvas has a clean URL —
-    // and the x-ray relies on that to decide whether a link opened the page.
-    for (const v of [WHOLE_CANVAS, view({ peel: 1 }), view({ solo: 3 }), view({ until: 1 })]) {
-      assert.equal(isAltered(v), encodeView(v, CAST) !== "", JSON.stringify(v.peel));
+  it("ignores a palette remix, which changes colour and not paint", () => {
+    // isAltered decides whether never-painted pixels read as absent. A remix is
+    // still the whole canvas, so they stay opaque — just in different colours.
+    assert.equal(isAltered(view({ paletteDay: 382 })), false);
+  });
+
+  it("implies the recipe is non-empty, though not the reverse", () => {
+    for (const v of [view({ peel: 1 }), view({ solo: 3 }), view({ until: 1 })]) {
+      assert.ok(isAltered(v) && encodeView(v, CAST) !== "");
     }
+    // A remix has a link to share but has not altered any paint.
+    const remix = view({ paletteDay: 382 });
+    assert.equal(isAltered(remix), false);
+    assert.notEqual(encodeView(remix, CAST), "");
+  });
+});
+
+describe("palette remix in a recipe", () => {
+  it("encodes the canvas whose palette is being worn", () => {
+    assert.equal(encodeView(view({ paletteDay: 382 }), CAST), "c=382");
+  });
+
+  it("sits between peel and the artist controls", () => {
+    assert.equal(
+      encodeView(view({ until: 1784850000, peel: 2, paletteDay: 7, solo: 1 }), CAST),
+      "t=1784850000&p=2&c=7&s=1&n=68",
+    );
+  });
+
+  it("round-trips", () => {
+    const { view: out } = decodeView(encodeView(view({ paletteDay: 382 }), CAST), CAST);
+    assert.equal(out.paletteDay, 382);
+  });
+
+  it("needs no artist guard of its own", () => {
+    // A palette is named by day, which never shifts, unlike an artist index.
+    assert.equal(encodeView(view({ paletteDay: 382 }), CAST).includes("n="), false);
+  });
+
+  it("drops a palette day that is not a positive integer", () => {
+    for (const bad of ["c=0", "c=-3", "c=1.5", "c=abc", "c="]) {
+      assert.equal(decodeView(bad, CAST).view.paletteDay, null, bad);
+    }
+  });
+
+  it("survives a re-encode unchanged", () => {
+    const original = "t=1784850000&p=2&c=382&m=1.3&n=68";
+    const { view: out } = decodeView(original, CAST);
+    assert.equal(encodeView(out, CAST), original);
   });
 });
 

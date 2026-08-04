@@ -43,9 +43,22 @@ export interface View {
   solo: number | null;
   /** hide these artists, revealing whatever was under them */
   muted: ReadonlySet<number>;
+  /**
+   * Repaint this canvas in another day's palette; null for its own.
+   *
+   * Named by day rather than by the colours themselves: a day is a stable
+   * identifier, the palette is in the committed index, and a link stays short.
+   */
+  paletteDay: number | null;
 }
 
-export const WHOLE_CANVAS: View = { until: null, peel: 0, solo: null, muted: new Set() };
+export const WHOLE_CANVAS: View = {
+  until: null,
+  peel: 0,
+  solo: null,
+  muted: new Set(),
+  paletteDay: null,
+};
 
 /**
  * Underpainting is peel 1 — the coat directly beneath the surface, with
@@ -107,12 +120,15 @@ export function renderView(r: Replay, view: View): Layer {
 }
 
 /**
- * Whether any control is off its default.
+ * Whether any control has changed which paint is showing.
  *
- * Two things hang off this. Untouched pixels are drawn as absent rather than as
- * palette colour 0, because in an altered view they are not deliberate paint.
- * And a link that opens the x-ray on an altered view skips the intro, since the
- * intro would animate away the thing the link was sent to show.
+ * This decides how never-painted pixels are drawn: as absent, because in a
+ * partial view palette colour 0 is not deliberate paint. A palette remix is
+ * deliberately excluded — it is still the whole canvas, just in other colours,
+ * so its untouched pixels stay as opaque as they are in the minted artwork.
+ *
+ * For "did a link open this page", ask whether the recipe is empty instead;
+ * that question does include the palette.
  */
 export function isAltered(view: View): boolean {
   return view.until !== null || view.peel > 0 || view.solo !== null || view.muted.size > 0;
@@ -148,6 +164,7 @@ export function encodeView(view: View, artistCount: number): string {
 
   if (view.until !== null) parts.push(`t=${view.until}`);
   if (view.peel > 0) parts.push(`p=${view.peel}`);
+  if (view.paletteDay !== null) parts.push(`c=${view.paletteDay}`);
   if (view.solo !== null) parts.push(`s=${view.solo}`);
   if (view.muted.size > 0) {
     parts.push(`m=${[...view.muted].sort((a, b) => a - b).join(".")}`);
@@ -175,6 +192,13 @@ export function decodeView(search: string, artistCount: number): DecodedView {
 
   const peel = Number(params.get("p"));
   if (params.has("p") && Number.isInteger(peel) && peel >= 0) view.peel = peel;
+
+  // Day 1 is the first canvas, so a palette day is always positive. An unknown
+  // day is left to the caller, which has the index and can fall back quietly.
+  const paletteDay = Number(params.get("c"));
+  if (params.has("c") && Number.isInteger(paletteDay) && paletteDay > 0) {
+    view.paletteDay = paletteDay;
+  }
 
   // A recipe made under a different cast cannot be trusted about who is who.
   const named = params.has("s") || params.has("m");

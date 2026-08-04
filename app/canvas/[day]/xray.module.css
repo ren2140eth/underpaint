@@ -235,12 +235,31 @@
   color: var(--signal);
 }
 
+.action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .actionNote {
-  flex: 1 1 12rem;
-  min-width: 0;
+  margin: 0.5rem 0 0;
   color: var(--faint);
   font-size: var(--micro);
   line-height: 1.5;
+}
+
+/* Wearing another canvas's colours: say whose, and link to them. */
+.remixed {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--ink-sunk);
+  border-left: 2px solid var(--deep);
+  color: var(--muted);
+  font-size: var(--micro);
+  line-height: 1.6;
+}
+
+.remixLink {
+  color: var(--signal);
 }
 
 /* A shared link that can no longer mean what it said. */

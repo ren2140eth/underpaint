@@ -245,3 +245,34 @@ export function parsePalette(palette: string): [number, number, number][] {
   if (colours.length === 0) throw new Error("palette: no colours");
   return colours;
 }
+
+/**
+ * Another canvas's palette, stretched to fit this one.
+ *
+ * BasePaint palettes run from 2 to 24 colours, so repainting a 16-colour canvas
+ * in a 4-colour palette needs a rule. This maps each index to the same relative
+ * position in the new palette: first to first, last to last, everything between
+ * proportionally. Palettes are mostly ordered light to dark, so that keeps the
+ * artwork's tonal structure and changes only its hue — modulo would collapse
+ * distant colours together and come out as noise.
+ *
+ * The result is indexed by the *original* palette's colour numbers, so it drops
+ * straight into anything that already renders this canvas.
+ */
+export function remapPalette(
+  size: number,
+  target: [number, number, number][],
+): [number, number, number][] {
+  if (!Number.isInteger(size) || size < 1) {
+    throw new RangeError(`remapPalette: size must be a positive integer, got ${size}`);
+  }
+  if (target.length === 0) throw new RangeError("remapPalette: target palette is empty");
+
+  // One colour in, or one colour out, and there is no ramp to walk.
+  if (size === 1 || target.length === 1) {
+    return Array.from({ length: size }, () => target[0]);
+  }
+
+  const step = (target.length - 1) / (size - 1);
+  return Array.from({ length: size }, (_, i) => target[Math.round(i * step)]);
+}
