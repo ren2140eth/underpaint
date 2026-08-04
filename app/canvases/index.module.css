@@ -1,0 +1,231 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem var(--gutter) 3rem;
+}
+
+/* ---- masthead: the same label the x-ray wears, one level up ---- */
+
+.masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: var(--gutter);
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.title {
+  margin: 0.25rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.thesis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.thesisBody {
+  color: var(--muted);
+  font-size: var(--small);
+  line-height: 1.6;
+}
+
+/* ---- tools ---- */
+
+.tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.search {
+  flex: 0 1 20rem;
+  min-width: 0;
+  padding: 0.35rem 0.55rem;
+  background: var(--ink-sunk);
+  border: 1px solid var(--rule-strong);
+  color: var(--paper);
+  font: inherit;
+  font-size: var(--small);
+}
+
+.search::placeholder {
+  color: var(--faint);
+}
+
+.count {
+  margin: 0;
+  color: var(--faint);
+  font-size: var(--micro);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ---- table ---- */
+
+/* Eleven columns will not fit a phone, so the table scrolls in its own box
+   rather than pushing the page sideways. */
+.scroller {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+}
+
+/*
+ * Automatic layout, deliberately.
+ *
+ * Re-sorting moves 1,089 rows, which costs ~210ms. Two obvious fixes were
+ * tried and both measured *worse* in a same-session A/B: `table-layout: fixed`
+ * with explicit column widths came in at 243-274ms, and `content-visibility:
+ * auto` on the rows at 270-361ms. Columns do not jiggle between sorts either
+ * way, because every row is always in the DOM, so a column's widest value
+ * never changes. Getting below ~210ms means rendering fewer rows, which costs
+ * the thing the page is for.
+ */
+.table {
+  width: 100%;
+  min-width: 62rem;
+  border-collapse: collapse;
+  font-size: var(--small);
+  font-variant-numeric: tabular-nums;
+}
+
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0;
+  background: var(--ink-sunk);
+  border-bottom: 1px solid var(--rule-strong);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.canvasHead {
+  text-align: left !important;
+}
+
+.sort {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.sort:hover {
+  color: var(--paper);
+}
+
+.arrow {
+  color: var(--signal);
+}
+
+.table tbody tr {
+  border-bottom: 1px solid var(--rule);
+}
+
+.table tbody tr:hover {
+  background: var(--ink-raised);
+}
+
+.canvasCell {
+  padding: 0;
+  font-weight: 400;
+  text-align: left;
+}
+
+.canvasLink {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.canvasLink:hover .canvasName {
+  color: var(--signal);
+}
+
+/* Pixel art: never smooth it, and hold the box before the image lands so
+   sorting 1,089 rows does not make the table jump. */
+.thumb {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  background: var(--ink-sunk);
+  image-rendering: pixelated;
+}
+
+.canvasText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.canvasName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 18rem;
+}
+
+.canvasDay {
+  color: var(--faint);
+  font-size: var(--micro);
+}
+
+.cell,
+.cellOn {
+  padding: 0.35rem 0.6rem;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* The column being sorted reads as the reason the page is in this order. */
+.cellOn {
+  color: var(--paper);
+  background: rgba(253, 224, 71, 0.06);
+}
+
+.empty {
+  margin: 0;
+  padding: 2rem 0.6rem;
+  color: var(--faint);
+  font-size: var(--small);
+}
+
+/* ---- responsive ---- */
+
+@media (max-width: 900px) {
+  .masthead {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search {
+    flex: 1 1 auto;
+  }
+}

@@ -69,6 +69,18 @@ export function canvasSize(day: number): number {
   return day <= LAST_144_DAY ? 144 : 256;
 }
 
+/**
+ * The published artwork for a day, as BasePaint serves it.
+ *
+ * The day is zero-padded to four digits. An unpadded path 404s, and since 999
+ * of the 1,089 settled canvases are under four digits, getting this wrong
+ * breaks almost every image on the archive page while leaving the newest ones
+ * working — which is exactly how it hides.
+ */
+export function artworkUrl(day: number): string {
+  return `https://basepaint.net/v3/${String(day).padStart(4, "0")}.png`;
+}
+
 export interface CanvasMeta {
   id: number;
   size: number;

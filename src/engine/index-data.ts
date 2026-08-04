@@ -10,12 +10,23 @@
  */
 
 import index from "../../data/index.json";
+import { type IndexRow, indexRows } from "./index-table";
 import type { CanvasStats } from "./stats";
 
 const canvases = index.canvases as unknown as CanvasStats[];
 
 export function allCanvases(): CanvasStats[] {
   return canvases;
+}
+
+/**
+ * The browse table's payload: settled canvases, trimmed to what renders.
+ *
+ * This one *is* meant to reach the browser — the index page sorts client-side
+ * because a statically exported site has no server to sort on.
+ */
+export function indexTable(): IndexRow[] {
+  return indexRows(canvases);
 }
 
 export function canvasRow(day: number): CanvasStats | undefined {

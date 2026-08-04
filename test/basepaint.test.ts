@@ -5,7 +5,21 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { LAST_144_DAY, canvasSize, parsePalette } from "../src/engine/basepaint";
+import { LAST_144_DAY, artworkUrl, canvasSize, parsePalette } from "../src/engine/basepaint";
+
+describe("artworkUrl", () => {
+  it("zero-pads the day to four digits", () => {
+    // Unpadded paths 404. The index links 1,089 of these, and 999 of them are
+    // under four digits, so getting this wrong breaks almost every thumbnail.
+    assert.equal(artworkUrl(1), "https://basepaint.net/v3/0001.png");
+    assert.equal(artworkUrl(214), "https://basepaint.net/v3/0214.png");
+    assert.equal(artworkUrl(569), "https://basepaint.net/v3/0569.png");
+  });
+
+  it("leaves four-digit days alone", () => {
+    assert.equal(artworkUrl(1080), "https://basepaint.net/v3/1080.png");
+  });
+});
 
 describe("canvasSize", () => {
   it("switches from 144 to 256 after the first year", () => {

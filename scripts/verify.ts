@@ -10,7 +10,7 @@
  */
 
 import { PNG } from "pngjs";
-import { fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint";
+import { artworkUrl, fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint";
 import { replay, renderFinal, toRGBA, UNPAINTED } from "../src/engine/replay";
 import { replayStats } from "../src/engine/stats";
 
@@ -48,8 +48,6 @@ function checkGroundTruth(day: number, stats: Record<string, unknown>): string[]
   return bad;
 }
 
-const OFFICIAL = (day: number) => `https://basepaint.net/v3/${String(day).padStart(4, "0")}.png`;
-
 interface Result {
   day: number;
   size: number;
@@ -59,7 +57,7 @@ interface Result {
 }
 
 async function officialImage(day: number): Promise<PNG> {
-  const res = await fetch(OFFICIAL(day));
+  const res = await fetch(artworkUrl(day));
   if (!res.ok) throw new Error(`official png ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
   return PNG.sync.read(buf);

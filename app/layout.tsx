@@ -13,7 +13,7 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "Underpaint — see what's under a BasePaint canvas",
   description:
-    "Replay every stroke of any BasePaint canvas to see the work that got painted over. 61.9% of all painting in BasePaint history is buried.",
+    "Replay every stroke of any BasePaint canvas to see the work that got painted over. 62.1% of all painting in BasePaint history is buried.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <nav className={styles.nav}>
             <Link href="/">X-ray</Link>
+            <Link href="/canvases">Archive</Link>
             <a href="https://github.com/ren2140eth/underpaint">Source</a>
             <a href="https://basepaint.xyz/" className={styles.home}>
               basepaint.xyz
