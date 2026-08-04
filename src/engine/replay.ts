@@ -8,7 +8,7 @@
  * Every view in the app is a pure function of the Replay produced here.
  */
 
-import type { Stroke } from "./basepaint.js";
+import type { Stroke } from "./basepaint";
 
 /** A single pixel placement. */
 export interface PaintEvent {

@@ -10,9 +10,9 @@
  */
 
 import { PNG } from "pngjs";
-import { fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint.js";
-import { replay, renderFinal, toRGBA, UNPAINTED } from "../src/engine/replay.js";
-import { replayStats } from "../src/engine/stats.js";
+import { fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint";
+import { replay, renderFinal, toRGBA, UNPAINTED } from "../src/engine/replay";
+import { replayStats } from "../src/engine/stats";
 
 /**
  * Headline numbers measured by hand when the project was scoped. They are

@@ -1,0 +1,79 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gutter);
+  padding: 0.75rem var(--gutter);
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--rule);
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+/*
+ * The mark is a two-coat pixel seen edge-on: signal yellow over BasePaint blue.
+ * It is the whole idea of the site at 12px.
+ */
+.mark {
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(to bottom, var(--signal) 0 50%, var(--deep) 50% 100%);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  font-size: var(--small);
+}
+
+.nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.nav a:hover {
+  color: var(--paper);
+}
+
+.home {
+  color: var(--signal) !important;
+}
+
+.home::after {
+  content: " ↗";
+  font-size: var(--micro);
+}
+
+.footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  max-width: 62ch;
+  margin: 0 auto;
+  padding: 3rem var(--gutter) 4rem;
+  color: var(--faint);
+  font-size: var(--small);
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .nav {
+    gap: 0.875rem;
+  }
+
+  .nav a:first-child {
+    display: none;
+  }
+}

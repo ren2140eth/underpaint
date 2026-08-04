@@ -1,0 +1,424 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem var(--gutter) 0;
+}
+
+/* ---- masthead: the specimen's label ---- */
+
+.masthead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr) auto;
+  align-items: start;
+  gap: var(--gutter);
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.title {
+  margin: 0.25rem 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.thesis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.thesisNumber {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.thesisNumber .readout {
+  color: var(--signal);
+}
+
+.thesisBody {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--small);
+  line-height: 1.55;
+}
+
+.dayNav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: var(--small);
+}
+
+.dayLink {
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dayLink:hover {
+  color: var(--signal);
+}
+
+.dayLinkOff {
+  color: var(--faint);
+  opacity: 0.4;
+}
+
+/* ---- instrument: specimen left, panel right ---- */
+
+.instrument {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 2rem;
+  padding: 1.75rem 0 0;
+  align-items: start;
+}
+
+.stageColumn {
+  position: sticky;
+  top: 4.5rem;
+}
+
+.stage {
+  position: relative;
+  aspect-ratio: 1;
+  background: var(--ink-sunk);
+  border: 1px solid var(--rule);
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  color: var(--faint);
+  font-size: var(--small);
+  min-height: 1.2em;
+}
+
+/* ---- the core sample ---- */
+
+.core {
+  position: absolute;
+  z-index: 10;
+  width: 15rem;
+  padding: 0.6rem;
+  background: var(--ink-raised);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.coreHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: var(--micro);
+  color: var(--muted);
+}
+
+.coreStack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.coreCoat {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--micro);
+  color: var(--muted);
+}
+
+/*
+ * Each coat is a slab in the column. The topmost is the surviving paint, so it
+ * gets the only bright edge — everything below it is what nobody sees.
+ */
+.coreSwatch {
+  height: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.coreCoat:last-child .coreSwatch {
+  box-shadow: inset 0 0 0 1px var(--signal);
+}
+
+.coreArtist {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.coreTime {
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+}
+
+.coreFoot,
+.coreEmpty,
+.corePinned {
+  margin: 0.45rem 0 0;
+  font-size: var(--micro);
+  color: var(--faint);
+}
+
+.corePinned {
+  color: var(--signal);
+}
+
+/* ---- control panel ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.control:last-child {
+  border-bottom: 0;
+}
+
+.controlHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.controlValue {
+  font-size: var(--small);
+  font-weight: 500;
+  color: var(--signal);
+  font-variant-numeric: tabular-nums;
+}
+
+.controlNote {
+  margin: 0;
+  color: var(--faint);
+  font-size: var(--micro);
+  line-height: 1.6;
+}
+
+.slider {
+  width: 100%;
+  height: 2px;
+  margin: 0.4rem 0;
+  appearance: none;
+  background: var(--rule-strong);
+  cursor: pointer;
+}
+
+.slider:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 3px;
+  height: 16px;
+  background: var(--signal);
+  border: 0;
+  border-radius: 0;
+}
+
+.slider::-moz-range-thumb {
+  width: 3px;
+  height: 16px;
+  background: var(--signal);
+  border: 0;
+  border-radius: 0;
+}
+
+.presets {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+
+.preset,
+.presetOn {
+  padding: 0.3rem 0.6rem;
+  font-size: var(--micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  cursor: pointer;
+}
+
+.presetOn {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.preset:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ---- attribution ---- */
+
+.split {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.splitRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.4rem;
+  align-items: stretch;
+}
+
+.splitName,
+.splitNameOn {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: var(--ink-sunk);
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.splitNameOn {
+  outline: 1px solid var(--signal);
+}
+
+/* The bar is the share, drawn behind the label rather than beside it. */
+.splitBar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--deep);
+  pointer-events: none;
+}
+
+.splitNameOn .splitBar {
+  background: color-mix(in srgb, var(--signal) 30%, var(--deep));
+}
+
+.splitLabel,
+.splitShare {
+  position: relative;
+  font-size: var(--micro);
+}
+
+.splitShare {
+  font-variant-numeric: tabular-nums;
+  color: var(--paper);
+}
+
+.mute,
+.muteOn {
+  padding: 0 0.45rem;
+  font-size: var(--micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--faint);
+  cursor: pointer;
+}
+
+.muteOn {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+/* ---- loading and failure ---- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  aspect-ratio: 1;
+  align-content: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--ink-sunk);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  font-size: var(--small);
+}
+
+.stateTitle {
+  margin: 0;
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.state p {
+  margin: 0;
+}
+
+.retry {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.7rem;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  font-size: var(--micro);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+
+/* ---- responsive ---- */
+
+@media (max-width: 900px) {
+  .masthead {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .instrument {
+    grid-template-columns: 1fr;
+  }
+
+  .stageColumn {
+    position: static;
+  }
+
+  .core {
+    width: 12rem;
+  }
+}

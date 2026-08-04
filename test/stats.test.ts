@@ -14,10 +14,10 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import type { CanvasMeta, Stroke } from "../src/engine/basepaint.js";
-import { dayWindow, mintWindowOpen } from "../src/engine/basepaint.js";
-import { replay } from "../src/engine/replay.js";
-import { canvasStats, replayStats } from "../src/engine/stats.js";
+import type { CanvasMeta, Stroke } from "../src/engine/basepaint";
+import { dayWindow, mintWindowOpen } from "../src/engine/basepaint";
+import { replay } from "../src/engine/replay";
+import { canvasStats, replayStats } from "../src/engine/stats";
 
 const SIZE = 4;
 const DAY = 1;

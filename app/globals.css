@@ -1,0 +1,92 @@
+/*
+ * BasePaint's own tokens, from basepaint.xyz/ai.txt. The palette is theirs;
+ * everything below is derived from it so this reads as part of their world.
+ */
+
+:root {
+  --ink: #1e2735;
+  --paper: #ffffff;
+  --signal: #fde047;
+  --deep: #073eb1;
+
+  /* derived: lifted panels, hairlines, and quiet text on the same hue */
+  --ink-raised: #253044;
+  --ink-sunk: #182030;
+  --rule: rgba(255, 255, 255, 0.13);
+  --rule-strong: rgba(255, 255, 255, 0.28);
+  --muted: rgba(255, 255, 255, 0.58);
+  --faint: rgba(255, 255, 255, 0.34);
+
+  --mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* an instrument's type scale: small, precise, few steps */
+  --micro: 0.625rem;
+  --small: 0.75rem;
+  --base: 0.8125rem;
+  --large: 1.125rem;
+
+  --gutter: 1.25rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: var(--base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Labels are the instrument's engraving: tiny, spaced, never shouting. */
+.label {
+  font-size: var(--micro);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Readouts are the opposite: the number is the loudest thing on the panel. */
+.readout {
+  font-size: var(--large);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

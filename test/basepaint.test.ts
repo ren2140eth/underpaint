@@ -5,7 +5,7 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { LAST_144_DAY, canvasSize, parsePalette } from "../src/engine/basepaint.js";
+import { LAST_144_DAY, canvasSize, parsePalette } from "../src/engine/basepaint";
 
 describe("canvasSize", () => {
   it("switches from 144 to 256 after the first year", () => {

@@ -15,3 +15,9 @@ data/strokes/
 docs/superpowers/
 # empty today, but /plan writes specs and briefs here; never publish them
 specs/
+
+# next build output
+/out/
+
+# playwright-mcp scratch
+.playwright-mcp/

@@ -16,8 +16,8 @@
  * fact about how a canvas was made, not a measure of who wasted their time.
  */
 
-import { type CanvasMeta, dayWindow, mintWindowOpen } from "./basepaint.js";
-import { type Replay, UNPAINTED } from "./replay.js";
+import { type CanvasMeta, dayWindow, mintWindowOpen } from "./basepaint";
+import { type Replay, UNPAINTED } from "./replay";
 
 /** Immutable once the painting window closes. */
 export interface ReplayStats {
@@ -85,6 +85,11 @@ export interface ReplayStats {
 export interface CanvasStats extends ReplayStats {
   name: string;
   size: number;
+  /**
+   * Comma-separated hex colours. Immutable per canvas, so it rides along in the
+   * committed index and the browser never has to ask anyone for it.
+   */
+  palette: string | null;
   /** name, size and palette came from the theme API, not the indexer */
   filledFromTheme: boolean;
 
@@ -181,6 +186,7 @@ export function canvasStats(stats: ReplayStats, meta: CanvasMeta, now?: number):
     ...stats,
     name: meta.name,
     size: meta.size,
+    palette: meta.palette,
     filledFromTheme: meta.filledFromTheme,
 
     submitted: meta.pixelsCount,

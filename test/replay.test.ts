@@ -16,7 +16,7 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import type { Stroke } from "../src/engine/basepaint.js";
+import type { Stroke } from "../src/engine/basepaint";
 import {
   UNPAINTED,
   attribution,
@@ -29,7 +29,7 @@ import {
   renderWithout,
   replay,
   toRGBA,
-} from "../src/engine/replay.js";
+} from "../src/engine/replay";
 
 const SIZE = 4;
 const A = "0xAAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaA";

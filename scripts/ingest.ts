@@ -29,9 +29,9 @@
 
 import { gunzipSync, gzipSync } from "node:zlib";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { DAY1_START, DAY_SECONDS, type Stroke, fetchCanvas, fetchStrokes } from "../src/engine/basepaint.js";
-import { replay } from "../src/engine/replay.js";
-import { type CanvasStats, type ReplayStats, canvasStats, replayStats } from "../src/engine/stats.js";
+import { DAY1_START, DAY_SECONDS, type Stroke, fetchCanvas, fetchStrokes } from "../src/engine/basepaint";
+import { replay } from "../src/engine/replay";
+import { type CanvasStats, type ReplayStats, canvasStats, replayStats } from "../src/engine/stats";
 
 /** Bump when a replay-derived metric changes, to invalidate cached rows. */
 const STATS_VERSION = 4;
