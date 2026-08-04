@@ -3,10 +3,10 @@
 **Most of the work in a BasePaint canvas is invisible.**
 
 BasePaint artists share one grid for 24 hours and paint over each other
-constantly. The artwork that gets minted is only what survived. On day 1080,
-68 artists placed 139,618 pixels onto a 65,536-pixel canvas — **57.4% of that
-work ended up buried**, and 32 of the 68 artists finished with no visible pixels
-at all.
+constantly. The artwork that gets minted is the top coat of that stack. On day
+1080, 68 artists placed 139,618 pixels onto a 65,536-pixel canvas — **57.4% of
+that work sits under later coats**, where the finished image is built on top of
+it.
 
 Underpaint replays every stroke of any canvas so you can see what's underneath.
 
@@ -32,7 +32,7 @@ panel](screenshots/xray.png)
 
 Beside it, a live attribution panel: every artist who painted here, ranked by
 what they own *right now*. Change a control and the ranking changes. Artists
-with nothing left keep their row — they are the point.
+whose paint is entirely buried keep their row — they are the point.
 
 ### Core sample
 
@@ -79,9 +79,9 @@ truncating your work into a different picture.
 
 ### Archive
 
-All 1,089 settled canvases, sortable by things nothing else computes: buried
-labour, coverage, paint depth, artist concentration, late surge, and what each
-canvas earned. **62.1% of all painting in BasePaint history is buried.**
+All 1,089 settled canvases, sortable by figures derived from the strokes:
+buried labour, coverage, paint depth, artist concentration, late surge, and what
+each canvas earned. **62.1% of all painting in BasePaint history is buried.**
 
 ![The archive sorted by buried share, with Ship of Theseus at
 92%](screenshots/archive.png)
@@ -167,13 +167,17 @@ test/                      172 offline fixtures
 Strokes are fetched on demand and replayed in the browser — the committed index
 is 978 KB, the archive's strokes are hundreds of megabytes.
 
-## A note on "survival"
+## A note on buried paint
 
-A low survival rate is not a bad score. An artist who lays down 7,000 pixels of
-base layer in hour 3 is doing the work the finished image is built on — that's
-underpainting, and it's why the canvas looks like anything at all. On day 1080
-the two busiest hands on the canvas placed 7,000 and 6,999 pixels — 7,000 being
-the most anyone placed that day — and both finished with nothing visible at all.
+Buried is not a bad score, and a high buried share is not a flaw in the canvas
+or in BasePaint. Painting over each other is the game as designed and as
+documented — that shared grid is the whole point of it, and every artist can
+see the rules going in.
+
+An artist who lays down 7,000 pixels of base layer in hour 3 is doing the work
+the finished image is built on — that's underpainting, and it's why the canvas
+looks like anything at all. On day 1080 the two busiest hands on the canvas
+placed 7,000 and 6,999 pixels, and both are entirely under later coats.
 Underpaint shows these numbers as facts about how a canvas was made, and
 deliberately does not rank artists by them.
 

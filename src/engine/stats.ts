@@ -13,7 +13,8 @@
  * `npm run verify`.
  *
  * Framing rule from the design: none of these are scores. Buried labour is a
- * fact about how a canvas was made, not a measure of who wasted their time.
+ * fact about how a canvas was made — how deeply it was worked — and not a
+ * judgement of anyone's painting, nor of the app the painting happened in.
  */
 
 import { type CanvasMeta, dayWindow, mintWindowOpen } from "./basepaint";

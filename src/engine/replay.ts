@@ -2,8 +2,9 @@
  * Stroke replay.
  *
  * A BasePaint canvas is a shared grid painted over 24 hours. Artists paint over
- * each other, and the minted artwork is only what survived. Replaying strokes in
- * order reconstructs not just the final image but every layer beneath it.
+ * each other, and the minted artwork is the top coat of that stack. Replaying
+ * strokes in order reconstructs not just the final image but every layer
+ * beneath it.
  *
  * Every view in the app is a pure function of the Replay produced here.
  */

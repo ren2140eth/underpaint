@@ -196,7 +196,7 @@ function sanityPass(rows: CanvasStats[]) {
       `inside a single stroke, leaving ${distinct.toLocaleString()} that put paint somewhere`,
   );
   console.log(
-    `  ${visible.toLocaleString()} survived — ` +
+    `  ${visible.toLocaleString()} of them in a finished artwork — ` +
       `${pct((distinct - visible) / distinct)} of all painting in BasePaint history is buried\n`,
   );
 

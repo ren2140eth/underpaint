@@ -417,12 +417,8 @@ export default function XRay({ row, prev, next }: Props) {
           <p className={styles.thesisBody}>
             {row.artists.toLocaleString()} artists placed{" "}
             <span className="tabular">{row.distinctPlaced.toLocaleString()}</span> pixels here.{" "}
-            <span className="tabular">{row.visible.toLocaleString()}</span> survived.{" "}
-            {row.artists - row.artistsVisible > 0 && (
-              <>
-                {row.artists - row.artistsVisible} of them finished with nothing visible at all.
-              </>
-            )}
+            <span className="tabular">{row.visible.toLocaleString()}</span> of them are in the
+            finished artwork; the rest are under later coats.
           </p>
         </div>
 

@@ -151,8 +151,8 @@ export default function Panel({ replay, row, view, setView, roster }: Props) {
         </div>
         <p className={styles.controlNote}>
           Everyone who painted here, ranked by what they own right now. Solo an artist to see
-          everything they painted, including work that got covered.
-          {buried > 0 && ` ${buried} finished with nothing visible.`}
+          everything they painted, including the parts now under later coats.
+          {buried > 0 && ` For ${buried} of them, all of it is under later coats.`}
         </p>
 
         {roster.length > 0 && (

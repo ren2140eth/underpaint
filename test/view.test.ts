@@ -133,9 +133,9 @@ describe("renderView", () => {
     // renderSolo answers "which pixels does B still own" — none, B was covered.
     assert.deepEqual(painted(renderSolo(r, 1)), {});
 
-    // The x-ray asks the more useful question: what did B paint at all? Half
-    // the artists on a busy canvas finish with nothing visible, and their work
-    // is the whole subject here.
+    // The x-ray asks the more useful question: what did B paint at all? On a
+    // busy canvas about half the artists have all their paint under later
+    // coats, and that work is the whole subject here.
     assert.deepEqual(painted(renderView(r, view({ solo: 1 }))), { "0,0": [2, 1] });
   });
 

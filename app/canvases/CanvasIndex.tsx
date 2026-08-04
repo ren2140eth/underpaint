@@ -20,7 +20,7 @@ interface Props {
 interface Column {
   key: SortKey;
   label: string;
-  /** what the number means, since none of these exist anywhere else */
+  /** what the number means, since each one is derived here rather than read off a feed */
   note: string;
   render: (r: IndexRow) => string;
   /** the direction a first click should use — for most metrics, biggest first */
@@ -34,7 +34,7 @@ const COLUMNS: Column[] = [
   {
     key: "buriedShare",
     label: "Buried",
-    note: "Share of all paint placed here that no one can see.",
+    note: "Share of the paint placed here that later coats cover.",
     render: (r) => pct(r.buriedShare),
     first: "desc",
   },
@@ -62,14 +62,14 @@ const COLUMNS: Column[] = [
   {
     key: "artists",
     label: "Artists",
-    note: "Everyone who painted, and how many finished with anything visible.",
+    note: "Everyone who painted here.",
     render: (r) => `${num(r.artists)}`,
     first: "desc",
   },
   {
     key: "artistsVisible",
     label: "Visible",
-    note: "Artists with at least one surviving pixel.",
+    note: "Artists with at least one pixel in the finished artwork.",
     render: (r) => `${num(r.artistsVisible)}`,
     first: "desc",
   },
@@ -104,7 +104,7 @@ const COLUMNS: Column[] = [
   {
     key: "effortPerMint",
     label: "Effort/mint",
-    note: "Placements per edition sold. Trends upward over time as mint volume fell, so it compares poorly across eras.",
+    note: "Placements per edition sold. Effort and editions have moved independently over the years, so it compares poorly across eras.",
     render: (r) => (r.effortPerMint === null ? "—" : Math.round(r.effortPerMint).toLocaleString()),
     first: "desc",
   },
@@ -150,7 +150,7 @@ export default function CanvasIndex({ rows, placed, visible }: Props) {
           <span className={styles.thesisBody}>
             {num(rows.length)} settled canvases. <span className="tabular">{num(placed)}</span>{" "}
             pixel placements, <span className="tabular">{num(visible)}</span> of them still
-            visible. Sort by any column — none of these numbers exist anywhere else.
+            visible. Sort by any column — every figure here is derived from the strokes.
           </span>
         </p>
       </header>
