@@ -144,6 +144,74 @@ export default function CanvasStage({
   // stage. Past the halfway line it hangs upward from the cursor instead.
   const above = probe !== null && probe.top > 50;
 
+  /** Put the probe on a grid coordinate, keeping the tooltip's placement in step. */
+  const probeAt = useCallback(
+    (x: number, y: number) => {
+      const cx = Math.min(replay.size - 1, Math.max(0, x));
+      const cy = Math.min(replay.size - 1, Math.max(0, y));
+      // Centre of the cell, so the tooltip sits where the cursor would be.
+      const left = ((cx + 0.5) / replay.size) * 100;
+      const top = ((cy + 0.5) / replay.size) * 100;
+      setProbe({ x: cx, y: cy, left, top });
+    },
+    [replay.size],
+  );
+
+  /**
+   * The core sample by keyboard.
+   *
+   * A canvas is opaque to assistive technology, so without this the inspector
+   * is reachable only by pointer. Arrows walk the grid — a whole row or column
+   * with shift, since stepping one pixel across 256 is not a journey anyone
+   * will make — and Enter pins, matching the click.
+   */
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (painting) return;
+
+      const step = event.shiftKey ? 10 : 1;
+      const here = probe ?? { x: Math.floor(replay.size / 2), y: Math.floor(replay.size / 2) };
+
+      switch (event.key) {
+        case "ArrowLeft":
+          probeAt(here.x - step, here.y);
+          break;
+        case "ArrowRight":
+          probeAt(here.x + step, here.y);
+          break;
+        case "ArrowUp":
+          probeAt(here.x, here.y - step);
+          break;
+        case "ArrowDown":
+          probeAt(here.x, here.y + step);
+          break;
+        case "Enter":
+        case " ":
+          if (probe) setPinned((p) => !p);
+          else probeAt(here.x, here.y);
+          break;
+        case "Escape":
+          setPinned(false);
+          setProbe(null);
+          break;
+        default:
+          return;
+      }
+
+      // Arrows would otherwise scroll the page out from under the canvas.
+      event.preventDefault();
+    },
+    [painting, probe, replay.size, probeAt],
+  );
+
+  /** What a screen reader is told about the pixel currently under inspection. */
+  const spoken = !probe
+    ? ""
+    : core.length === 0
+      ? `Pixel ${probe.x}, ${probe.y}: never painted.`
+      : `Pixel ${probe.x}, ${probe.y}: ${core.length} ${core.length === 1 ? "coat" : "coats"}, ` +
+        `${core.length - 1} buried. Surface painted by ${shortAddress(replay.artists[core[0].artist])}.`;
+
   return (
     <div className={styles.stage}>
       <canvas
@@ -151,6 +219,14 @@ export default function CanvasStage({
         width={replay.size}
         height={replay.size}
         className={painting ? `${styles.canvas} ${styles.canvasPainting}` : styles.canvas}
+        tabIndex={0}
+        role={painting ? "application" : "img"}
+        aria-label={
+          painting
+            ? `Painting surface, ${replay.size} by ${replay.size} pixels. Drag to paint.`
+            : `The canvas, ${replay.size} by ${replay.size} pixels. Arrow keys inspect a pixel's coats, shift for ten at a time, Enter to pin.`
+        }
+        onKeyDown={onKeyDown}
         // Painting and probing are different intents on the same surface, so
         // only one is live at a time.
         onPointerDown={startStroke}
@@ -165,6 +241,12 @@ export default function CanvasStage({
           setPinned((p) => !p);
         }}
       />
+
+      {/* The tooltip is a canvas overlay and unreadable to a screen reader, so
+          the same finding is announced in text. */}
+      <p className={styles.spoken} aria-live="polite">
+        {spoken}
+      </p>
 
       {!painting && probe && (
         <div

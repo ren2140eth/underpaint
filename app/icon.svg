@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- The wordmark, which is the thesis: a surface coat, and the coat under it. -->
+  <rect width="32" height="32" fill="#1e2735"/>
+  <rect x="4" y="4" width="24" height="12" fill="#fde047"/>
+  <rect x="4" y="16" width="24" height="12" fill="#073eb1"/>
+</svg>
