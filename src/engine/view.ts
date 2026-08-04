@@ -134,6 +134,23 @@ export function isAltered(view: View): boolean {
   return view.until !== null || view.peel > 0 || view.solo !== null || view.muted.size > 0;
 }
 
+/**
+ * Whether anything at all stands between what is on screen and the minted
+ * artwork — the question the page answers out loud.
+ *
+ * Deliberately broader than `isAltered`, which answers a rendering question and
+ * so excludes a remix. This one cannot: a canvas in another day's colours, or
+ * one carrying a coat the visitor laid down themselves, is not the artwork as
+ * it was minted, and saying so under a caption that reads "repainted in the
+ * palette of day 382" would contradict the image and the caption at once.
+ *
+ * `paintedPixels` is the visitor's own coat, which is content rather than a
+ * control and so lives outside the View.
+ */
+export function isComposed(view: View, paintedPixels = 0): boolean {
+  return isAltered(view) || view.paletteDay !== null || paintedPixels > 0;
+}
+
 /** A decoded recipe, and whether it named artists this canvas no longer has. */
 export interface DecodedView {
   view: View;

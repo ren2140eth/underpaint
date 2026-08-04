@@ -18,6 +18,7 @@ import {
   decodeView,
   encodeView,
   isAltered,
+  isComposed,
   renderView,
   roster,
 } from "../../../src/engine/view";
@@ -94,11 +95,32 @@ export default function XRay({ row, prev, next }: Props) {
     null,
   );
   const [remixing, setRemixing] = useState(false);
+  /** The palette index would not load, so a remix cannot be honoured. */
+  const [paletteError, setPaletteError] = useState(false);
+  /** A link named a palette day that has no canvas; the day it named. */
+  const [unknownPalette, setUnknownPalette] = useState<number | null>(null);
 
+  /**
+   * Every failure here is a lie if it passes silently: without the index a
+   * remix renders the canvas's *own* colours, which looks like a canvas that
+   * happens to resemble itself rather than like something that went wrong. So
+   * the shape is checked as well as the status, and both callers report.
+   */
   const loadPalettes = useCallback(async () => {
     if (palettes) return palettes;
-    const rows: [number, string, string][] = await (await fetch("/palettes.json")).json();
-    const map = new Map(rows.map(([day, name, colours]) => [day, { name, colours }]));
+
+    const response = await fetch("/palettes.json");
+    if (!response.ok) throw new Error(`palettes.json: HTTP ${response.status}`);
+
+    const rows: unknown = await response.json();
+    if (!Array.isArray(rows)) throw new Error("palettes.json: not a list");
+
+    const map = new Map(
+      (rows as [number, string, string][]).map(([day, name, colours]) => [
+        day,
+        { name, colours },
+      ]),
+    );
     setPalettes(map);
     return map;
   }, [palettes]);
@@ -244,8 +266,25 @@ export default function XRay({ row, prev, next }: Props) {
   // altered view they should read as absent rather than as deliberate paint.
   const altered = isAltered(view);
 
+  // What the page claims out loud, which is a wider question than how the
+  // untouched pixels are drawn: a remix and the visitor's own coat both count.
+  const composed = isComposed(view, paint.size);
+
   const paintBlob = useMemo(() => (r ? encodePaint(paint, r.size) : ""), [paint, r]);
   const paintShareable = paintBlob.length <= MAX_PAINT_CHARS;
+
+  /**
+   * The whole state as a query string. Both the address bar and the copied link
+   * are built from this rather than from each other: the address bar is written
+   * on a timer, so a link read back off it is whatever the page looked like a
+   * moment ago — the slider just moved would not be in it.
+   */
+  const query = useMemo(() => {
+    if (!r) return "";
+    const parts = [encodeView(view, r.artists.length)];
+    if (paintBlob && paintShareable) parts.push(`d=${paintBlob}`);
+    return parts.filter(Boolean).join("&");
+  }, [r, view, paintBlob, paintShareable]);
 
   /**
    * The address bar follows the whole state, written once things have settled
@@ -256,13 +295,10 @@ export default function XRay({ row, prev, next }: Props) {
   useEffect(() => {
     if (!r || intro.current !== null) return;
     const timer = setTimeout(() => {
-      const parts = [encodeView(view, r.artists.length)];
-      if (paintBlob && paintShareable) parts.push(`d=${paintBlob}`);
-      const q = parts.filter(Boolean).join("&");
-      window.history.replaceState(null, "", q ? `?${q}` : window.location.pathname);
+      window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
     }, 250);
     return () => clearTimeout(timer);
-  }, [r, view, paintBlob, paintShareable]);
+  }, [r, query]);
 
   const [copied, setCopied] = useState(false);
 
@@ -276,7 +312,10 @@ export default function XRay({ row, prev, next }: Props) {
       const map = await loadPalettes();
       const days = [...map.keys()].filter((d) => d !== row.day && d !== view.paletteDay);
       if (days.length === 0) return;
+      setPaletteError(false);
       changeView({ ...view, paletteDay: days[Math.floor(Math.random() * days.length)] });
+    } catch {
+      setPaletteError(true);
     } finally {
       setRemixing(false);
     }
@@ -284,18 +323,41 @@ export default function XRay({ row, prev, next }: Props) {
 
   // A link can arrive already wearing a palette, before anything is loaded.
   useEffect(() => {
-    if (view.paletteDay !== null && !palettes) void loadPalettes();
+    if (view.paletteDay === null || palettes) return;
+    let live = true;
+    loadPalettes().then(
+      () => live && setPaletteError(false),
+      () => live && setPaletteError(true),
+    );
+    return () => {
+      live = false;
+    };
   }, [view.paletteDay, palettes, loadPalettes]);
 
+  /**
+   * A recipe is a string a stranger typed, and `decodeView` deliberately leaves
+   * "is this a real day" to whoever holds the index. This is that check: a day
+   * with no canvas is dropped once the index is in hand, because keeping it
+   * would caption the canvas's own colours as another day's and link to a page
+   * that does not exist.
+   */
+  useEffect(() => {
+    const day = view.paletteDay;
+    if (day === null || !palettes || palettes.has(day)) return;
+    setUnknownPalette(day);
+    setView((v) => (v.paletteDay === day ? { ...v, paletteDay: null } : v));
+  }, [view.paletteDay, palettes]);
+
   const copyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href).then(
+    const { origin, pathname } = window.location;
+    navigator.clipboard.writeText(`${origin}${pathname}${query ? `?${query}` : ""}`).then(
       () => {
         setCopied(true);
         setTimeout(() => setCopied(false), 1600);
       },
       () => setCopied(false),
     );
-  }, []);
+  }, [query]);
 
   /**
    * The variation as a PNG, rebuilt at an integer scale rather than by
@@ -430,7 +492,7 @@ export default function XRay({ row, prev, next }: Props) {
             {!r
               ? " "
               : painting
-                ? "Drag on the canvas to paint. Your coat sits on top of whatever you have composed."
+                ? "Drag on the canvas to paint, or move the brush with the arrow keys and press Enter to put the pen down. Your coat sits on top of whatever you have composed."
                 : "Hover or tap the canvas to pull a core sample. Click again to pin it."}
           </p>
 
@@ -527,21 +589,37 @@ export default function XRay({ row, prev, next }: Props) {
             </p>
           )}
 
-          {r && view.paletteDay !== null && (
+          {/* Only once the palette is in hand: until then the canvas is still
+              showing its own colours, and a caption saying otherwise would be
+              describing an image that is not on screen yet. */}
+          {r && view.paletteDay !== null && worn && (
             <p className={styles.remixed}>
               Repainted in the palette of{" "}
               <Link href={`/canvas/${view.paletteDay}`} className={styles.remixLink}>
-                day {view.paletteDay}
-                {worn && `, ${worn.name}`}
+                day {view.paletteDay}, {worn.name}
               </Link>
               . Same paint, same hands, {ownPalette.length} colours mapped onto{" "}
-              {worn ? worn.colours.split(",").length : "?"}.
+              {worn.colours.split(",").length}.
+            </p>
+          )}
+
+          {r && paletteError && (
+            <p className={styles.stale}>
+              The list of palettes didn't load, so this canvas is still in its own colours. The
+              strokes are unaffected — everything else on this page is what it says it is.
+            </p>
+          )}
+
+          {r && unknownPalette !== null && (
+            <p className={styles.stale}>
+              That link asked for the palette of day {unknownPalette}, and there is no such
+              canvas. The colours here are this canvas's own.
             </p>
           )}
 
           {r && (
             <p className={styles.actionNote}>
-              {altered
+              {composed
                 ? "The link is a recipe: it names the controls, and the canvas is replayed from the strokes."
                 : "The canvas as it was minted."}
             </p>

@@ -61,6 +61,18 @@ export default function CanvasStage({
   const [pinned, setPinned] = useState(false);
   /** last grid position while a drag is in flight, so the gap can be filled */
   const stroking = useRef<{ x: number; y: number } | null>(null);
+  /**
+   * The keyboard's equivalent of holding the button down. A pointer says when a
+   * stroke starts and ends by pressing and releasing; a keyboard has no such
+   * pair, so the pen is a mode the visitor toggles.
+   */
+  const [penDown, setPenDown] = useState(false);
+
+  // Leaving paint mode lifts the pen, so coming back never resumes a stroke
+  // that nothing on screen was showing.
+  useEffect(() => {
+    if (!painting) setPenDown(false);
+  }, [painting]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -144,73 +156,136 @@ export default function CanvasStage({
   // stage. Past the halfway line it hangs upward from the cursor instead.
   const above = probe !== null && probe.top > 50;
 
+  const clamp = useCallback(
+    (n: number) => Math.min(replay.size - 1, Math.max(0, n)),
+    [replay.size],
+  );
+
   /** Put the probe on a grid coordinate, keeping the tooltip's placement in step. */
   const probeAt = useCallback(
     (x: number, y: number) => {
-      const cx = Math.min(replay.size - 1, Math.max(0, x));
-      const cy = Math.min(replay.size - 1, Math.max(0, y));
+      const cx = clamp(x);
+      const cy = clamp(y);
       // Centre of the cell, so the tooltip sits where the cursor would be.
       const left = ((cx + 0.5) / replay.size) * 100;
       const top = ((cy + 0.5) / replay.size) * 100;
       setProbe({ x: cx, y: cy, left, top });
     },
-    [replay.size],
+    [clamp, replay.size],
   );
 
   /**
-   * The core sample by keyboard.
+   * Move the cursor, drawing behind it when the pen is down.
    *
-   * A canvas is opaque to assistive technology, so without this the inspector
-   * is reachable only by pointer. Arrows walk the grid — a whole row or column
+   * The line-fill is the same one the pointer uses, and for the same reason:
+   * held keys repeat, and a shifted step crosses ten pixels at once, so without
+   * it the arrows would lay dots rather than a stroke.
+   */
+  const stepTo = useCallback(
+    (x: number, y: number) => {
+      const cx = clamp(x);
+      const cy = clamp(y);
+
+      if (penDown && probe) {
+        const pixels: [number, number][] = [];
+        for (const [lx, ly] of linePixels(probe.x, probe.y, cx, cy)) pixels.push(...dab(lx, ly));
+        onPaint(pixels);
+      }
+
+      probeAt(cx, cy);
+    },
+    [clamp, penDown, probe, dab, onPaint, probeAt],
+  );
+
+  /**
+   * The canvas by keyboard, in both of its modes.
+   *
+   * A canvas is opaque to assistive technology, so without this it is reachable
+   * only by pointer. Arrows walk the grid either way — a whole row or column
    * with shift, since stepping one pixel across 256 is not a journey anyone
-   * will make — and Enter pins, matching the click.
+   * will make. Enter then does whatever a click does here: pins the core
+   * sample, or puts the pen down.
+   *
+   * Painting deserves the keyboard as much as inspecting does. The freehand
+   * exception in WCAG 2.1.1 does not really cover it — paint lands on discrete
+   * grid cells, so a stroke is its endpoints and not the path between them,
+   * which is exactly what arrows and a line-fill can express.
    */
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLCanvasElement>) => {
-      if (painting) return;
-
       const step = event.shiftKey ? 10 : 1;
       const here = probe ?? { x: Math.floor(replay.size / 2), y: Math.floor(replay.size / 2) };
 
       switch (event.key) {
         case "ArrowLeft":
-          probeAt(here.x - step, here.y);
+          stepTo(here.x - step, here.y);
           break;
         case "ArrowRight":
-          probeAt(here.x + step, here.y);
+          stepTo(here.x + step, here.y);
           break;
         case "ArrowUp":
-          probeAt(here.x, here.y - step);
+          stepTo(here.x, here.y - step);
           break;
         case "ArrowDown":
-          probeAt(here.x, here.y + step);
+          stepTo(here.x, here.y + step);
           break;
         case "Enter":
         case " ":
-          if (probe) setPinned((p) => !p);
-          else probeAt(here.x, here.y);
+          if (!painting) {
+            if (probe) setPinned((p) => !p);
+            else probeAt(here.x, here.y);
+          } else if (penDown) {
+            setPenDown(false);
+          } else {
+            // Putting the pen down lays a dab where it lands, so a tap is a dot
+            // and the arrows become a brush for as long as it is held down.
+            onStrokeStart();
+            setPenDown(true);
+            probeAt(here.x, here.y);
+            onPaint(dab(here.x, here.y));
+          }
           break;
         case "Escape":
-          setPinned(false);
-          setProbe(null);
+          if (painting) {
+            setPenDown(false);
+          } else {
+            setPinned(false);
+            setProbe(null);
+          }
           break;
         default:
           return;
       }
 
-      // Arrows would otherwise scroll the page out from under the canvas.
+      // Arrows would otherwise scroll the page out from under the canvas, and
+      // space would scroll it a whole screen.
       event.preventDefault();
     },
-    [painting, probe, replay.size, probeAt],
+    [painting, penDown, probe, replay.size, probeAt, stepTo, dab, onPaint, onStrokeStart],
   );
 
-  /** What a screen reader is told about the pixel currently under inspection. */
-  const spoken = !probe
-    ? ""
-    : core.length === 0
-      ? `Pixel ${probe.x}, ${probe.y}: never painted.`
-      : `Pixel ${probe.x}, ${probe.y}: ${core.length} ${core.length === 1 ? "coat" : "coats"}, ` +
-        `${core.length - 1} buried. Surface painted by ${shortAddress(replay.artists[core[0].artist])}.`;
+  /** What a screen reader is told: where the brush is, or what the core sample found. */
+  const spoken = painting
+    ? probe
+      ? `Brush at ${probe.x}, ${probe.y}. Pen ${penDown ? "down" : "up"}.`
+      : ""
+    : !probe
+      ? ""
+      : core.length === 0
+        ? `Pixel ${probe.x}, ${probe.y}: never painted.`
+        : `Pixel ${probe.x}, ${probe.y}: ${core.length} ${core.length === 1 ? "coat" : "coats"}, ` +
+          `${core.length - 1} buried. Surface painted by ${shortAddress(replay.artists[core[0].artist])}.`;
+
+  // The brush footprint, as a fraction of the stage. Painting hides the core
+  // sample, so without this the keyboard would place paint at a coordinate
+  // nothing on screen names.
+  const reach = Math.floor((brush - 1) / 2);
+  const cursor = probe && {
+    left: `${((probe.x - reach) / replay.size) * 100}%`,
+    top: `${((probe.y - reach) / replay.size) * 100}%`,
+    width: `${(brush / replay.size) * 100}%`,
+    height: `${(brush / replay.size) * 100}%`,
+  };
 
   return (
     <div className={styles.stage}>
@@ -223,7 +298,7 @@ export default function CanvasStage({
         role={painting ? "application" : "img"}
         aria-label={
           painting
-            ? `Painting surface, ${replay.size} by ${replay.size} pixels. Drag to paint.`
+            ? `Painting surface, ${replay.size} by ${replay.size} pixels. Drag to paint, or move the brush with the arrow keys, shift for ten at a time, and press Enter to put the pen down and again to lift it.`
             : `The canvas, ${replay.size} by ${replay.size} pixels. Arrow keys inspect a pixel's coats, shift for ten at a time, Enter to pin.`
         }
         onKeyDown={onKeyDown}
@@ -247,6 +322,13 @@ export default function CanvasStage({
       <p className={styles.spoken} aria-live="polite">
         {spoken}
       </p>
+
+      {painting && cursor && (
+        <div
+          className={penDown ? `${styles.brush} ${styles.brushDown}` : styles.brush}
+          style={cursor}
+        />
+      )}
 
       {!painting && probe && (
         <div

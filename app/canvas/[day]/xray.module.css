@@ -125,6 +125,22 @@
   cursor: crosshair;
 }
 
+/* Where the keyboard's brush is standing. Paint mode hides the core sample, so
+   this is the only thing naming the coordinate a key press will paint. The
+   outline is doubled light-on-dark so it reads over any palette. */
+.brush {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  outline: 1px solid rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 0 2px var(--signal);
+}
+
+/* Pen down: the brush is laying paint as it moves, not just standing there. */
+.brushDown {
+  background: color-mix(in srgb, var(--signal) 35%, transparent);
+}
+
 .hint {
   margin: 0.75rem 0 0;
   color: var(--faint);

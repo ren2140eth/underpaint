@@ -12,7 +12,14 @@
 
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { WHOLE_CANVAS, type View, decodeView, encodeView, isAltered } from "../src/engine/view";
+import {
+  WHOLE_CANVAS,
+  type View,
+  decodeView,
+  encodeView,
+  isAltered,
+  isComposed,
+} from "../src/engine/view";
 
 const CAST = 68;
 const view = (over: Partial<View> = {}): View => ({ ...WHOLE_CANVAS, ...over });
@@ -43,6 +50,37 @@ describe("isAltered", () => {
     const remix = view({ paletteDay: 382 });
     assert.equal(isAltered(remix), false);
     assert.notEqual(encodeView(remix, CAST), "");
+  });
+});
+
+describe("isComposed", () => {
+  it("is false only for the minted artwork, untouched and unpainted", () => {
+    assert.equal(isComposed(WHOLE_CANVAS), false);
+    assert.equal(isComposed(WHOLE_CANVAS, 0), false);
+  });
+
+  it("counts a palette remix, which isAltered does not", () => {
+    // The two predicates answer different questions, and this is the pair that
+    // used to be conflated: the page claimed "as it was minted" underneath its
+    // own "repainted in the palette of day 382".
+    const remix = view({ paletteDay: 382 });
+    assert.equal(isAltered(remix), false);
+    assert.equal(isComposed(remix), true);
+  });
+
+  it("counts the visitor's own coat, which is not a control at all", () => {
+    assert.equal(isComposed(WHOLE_CANVAS, 1), true);
+  });
+
+  it("counts every control isAltered counts", () => {
+    for (const v of [
+      view({ peel: 1 }),
+      view({ until: 1784850000 }),
+      view({ solo: 0 }),
+      view({ muted: new Set([0]) }),
+    ]) {
+      assert.equal(isComposed(v), true);
+    }
   });
 });
 
