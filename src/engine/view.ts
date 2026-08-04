@@ -252,8 +252,14 @@ export function roster(r: Replay, layer: Layer): RosterEntry[] {
   for (let p = 0; p < r.area; p++) {
     const a = layer.owner[p];
     if (a === UNPAINTED) continue;
-    visible[a]++;
+
+    // Everything visible counts against the total, so shares stay fractions of
+    // what is actually on screen. But a visitor's own paint (a negative owner
+    // that is not UNPAINTED) belongs to no artist and must never enter their
+    // ranking — stated rather than left to a typed array quietly dropping a
+    // negative index.
     total++;
+    if (a >= 0) visible[a]++;
   }
 
   return r.artists

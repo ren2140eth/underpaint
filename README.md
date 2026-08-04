@@ -18,7 +18,7 @@ in the finished piece own something here — and 8 who are visible on the surfac
 vanish, because everything they painted was laid down once and never covered.
 The checkerboard is where nothing was buried.*
 
-## The three surfaces
+## What it does
 
 ### X-ray
 
@@ -60,6 +60,23 @@ keeps its tonal structure and changes only its hue.
 The roll happens on click and the result is a fixed day in the URL, so a remix
 link reproduces exactly rather than re-rolling for whoever opens it.
 
+### Paint
+
+Compose a variation — wind the day back, strip some coats, wear another
+canvas's colours — then **paint** on it and finish it however you like. Your
+coat sits on top of whatever you composed, in the palette that's active, so a
+remix recolours your work along with everyone else's: it's paint on the same
+canvas, not a sticker over it.
+
+The artist panel counts your pixels honestly. Everyone's share is a fraction of
+what's actually visible, so covering someone's work lowers their number — you
+are one of the hands now.
+
+A painting rides in the link as a BasePaint-format `XXYYCC` blob, the same
+triplets the chain stores. Past about 1,300 pixels it stops fitting in a URL;
+the canvas and the PNG keep every pixel and the page says so, rather than
+truncating your work into a different picture.
+
 ### Archive
 
 All 1,089 settled canvases, sortable by things nothing else computes: buried
@@ -79,12 +96,13 @@ strokes when the link is opened. Nothing is stored, and the same link always
 produces the same image.
 
 ```
-/canvas/1080?t=1784875315&p=2&c=102&s=8&n=68
-             │             │    │     │   └─ the cast this link was made under
-             │             │    │     └───── showing only artist 8
-             │             │    └─────────── in day 102's palette
-             │             └──────────────── two coats stripped
-             └────────────────────────────── as it stood at hour 14
+/canvas/1080?t=1784875315&p=2&c=102&s=8&n=68&d=1f2a03…
+             │             │    │     │   │   └─ your own coat, XXYYCC per pixel
+             │             │    │     │   └───── the cast this link was made under
+             │             │    │     └───────── showing only artist 8
+             │             │    └─────────────── in day 102's palette
+             │             └──────────────────── two coats stripped
+             └────────────────────────────────── as it stood at hour 14
 ```
 
 `solo` and `muted` are indices into the canvas's artist list, which is built in
@@ -98,10 +116,10 @@ the pixels stay square, with the recipe in the filename.
 
 ## Verified against the real artwork
 
-Two layers of checking. `npm test` runs 149 offline unit fixtures over every
+Two layers of checking. `npm test` runs 172 offline unit fixtures over every
 render mode — time scrubbing, coat peeling, solo, mute, underpainting,
-attribution, the artist roster, pixel histories, recipe encoding, and the
-malformed-blob paths.
+attribution, the artist roster, pixel histories, recipe encoding, palette
+remapping, brush geometry, and the malformed-blob paths.
 
 `npm run verify` is the proof that matters. It re-derives each canvas's final
 image from its strokes and compares it pixel-for-pixel with the artwork
@@ -138,11 +156,12 @@ src/engine/replay.ts       stroke replay, render modes, coat grouping
 src/engine/view.ts         composed variations, artist roster, URL recipes
 src/engine/stats.ts        per-canvas statistics
 src/engine/index-table.ts  the archive's rows and sort order
+src/engine/paint.ts        the visitor's own coat: brush, blob, overlay
 scripts/verify.ts          correctness proof against published artwork
 scripts/ingest.ts          precompute the canvas index
 scripts/palettes.ts        project the palette lookup the remix control fetches
 data/index.json            1,090 canvases, committed
-test/                      149 offline fixtures
+test/                      172 offline fixtures
 ```
 
 Strokes are fetched on demand and replayed in the browser — the committed index

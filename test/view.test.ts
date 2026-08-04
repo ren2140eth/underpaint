@@ -20,6 +20,7 @@ import {
   renderWithout,
   replay,
 } from "../src/engine/replay";
+import { applyPaint } from "../src/engine/paint";
 import { UNDERPAINTING, WHOLE_CANVAS, type View, renderView, roster } from "../src/engine/view";
 
 const SIZE = 4;
@@ -254,6 +255,26 @@ describe("roster", () => {
     assert.equal(entries.length, 3);
     assert.ok(entries.every((e) => e.share === 0 && e.visible === 0));
     assert.ok(entries.every((e) => e.everPainted > 0));
+  });
+
+  it("counts the visitor's own paint against the total without crediting an artist", () => {
+    // Painting covers a pixel A owned. A's share must fall, because the share
+    // is "of what is visible" — but the visitor is not one of the canvas's
+    // artists and must never appear in their ranking.
+    const layer = renderView(r, WHOLE_CANVAS);
+    const painted = applyPaint(layer, new Map([[0, 5]]), r.area);
+
+    const before = roster(r, layer);
+    const after = roster(r, painted);
+
+    assert.equal(after.length, before.length, "no artist was added");
+    assert.ok(after.every((e) => e.index >= 0));
+
+    const a = after.find((e) => e.artist === A);
+    if (!a) throw new Error("A missing");
+    // A owned 2 of 3 visible pixels; one is now the visitor's, so 1 of 3.
+    assert.equal(a.visible, 1);
+    assert.ok(Math.abs(a.share - 1 / 3) < 1e-12, `share was ${a.share}`);
   });
 
   it("carries the artist index the view filters speak in", () => {

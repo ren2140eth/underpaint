@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layer, Replay } from "../../../src/engine/replay";
+import { brushPixels, linePixels } from "../../../src/engine/paint";
 import { coats, pixelHistory, toRGBA } from "../../../src/engine/replay";
 import styles from "./xray.module.css";
 
@@ -13,6 +14,12 @@ interface Props {
   transparent: boolean;
   /** start of the canvas's 24h window, for elapsed-time readouts */
   dayStart: number;
+  /** while painting, the canvas is a surface rather than a specimen */
+  painting: boolean;
+  brush: number;
+  /** a drag begins; the caller snapshots for undo */
+  onStrokeStart: () => void;
+  onPaint: (pixels: [number, number][]) => void;
 }
 
 interface Probe {
@@ -38,10 +45,22 @@ const intoDay = (t: number, dayStart: number) => {
   return `+${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}`;
 };
 
-export default function CanvasStage({ replay, layer, palette, transparent, dayStart }: Props) {
+export default function CanvasStage({
+  replay,
+  layer,
+  palette,
+  transparent,
+  dayStart,
+  painting,
+  brush,
+  onStrokeStart,
+  onPaint,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [probe, setProbe] = useState<Probe | null>(null);
   const [pinned, setPinned] = useState(false);
+  /** last grid position while a drag is in flight, so the gap can be filled */
+  const stroking = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,7 +73,7 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
   }, [layer, palette, replay.area, replay.size, transparent]);
 
   const locate = useCallback(
-    (event: React.MouseEvent<HTMLCanvasElement>) => {
+    (event: React.PointerEvent<HTMLCanvasElement> | React.MouseEvent<HTMLCanvasElement>) => {
       const rect = event.currentTarget.getBoundingClientRect();
       const fx = (event.clientX - rect.left) / rect.width;
       const fy = (event.clientY - rect.top) / rect.height;
@@ -64,6 +83,47 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
     },
     [replay.size],
   );
+
+  /** One dab, widened by the brush and clipped to the grid. */
+  const dab = useCallback(
+    (x: number, y: number) => brushPixels(x, y, brush, replay.size),
+    [brush, replay.size],
+  );
+
+  const startStroke = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      if (!painting) return;
+      // Capture, so a drag that leaves the canvas keeps painting and, more
+      // importantly, still ends when the button comes up outside it.
+      event.currentTarget.setPointerCapture(event.pointerId);
+      const { x, y } = locate(event);
+      stroking.current = { x, y };
+      onStrokeStart();
+      onPaint(dab(x, y));
+    },
+    [painting, locate, onStrokeStart, onPaint, dab],
+  );
+
+  const continueStroke = useCallback(
+    (event: React.PointerEvent<HTMLCanvasElement>) => {
+      const from = stroking.current;
+      if (!painting || !from) return;
+      const { x, y } = locate(event);
+      if (x === from.x && y === from.y) return;
+
+      // A pointer dragged at speed skips pixels; joining the reported positions
+      // is the difference between a stroke and a row of dots.
+      const pixels: [number, number][] = [];
+      for (const [lx, ly] of linePixels(from.x, from.y, x, y)) pixels.push(...dab(lx, ly));
+      stroking.current = { x, y };
+      onPaint(pixels);
+    },
+    [painting, locate, onPaint, dab],
+  );
+
+  const endStroke = useCallback(() => {
+    stroking.current = null;
+  }, []);
 
   // Newest first, so the column reads like a real core sample: surviving paint
   // at the top, first coat at the bottom. Reversed here rather than with
@@ -90,16 +150,23 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
         ref={canvasRef}
         width={replay.size}
         height={replay.size}
-        className={styles.canvas}
-        onMouseMove={(e) => !pinned && setProbe(locate(e))}
-        onMouseLeave={() => !pinned && setProbe(null)}
+        className={painting ? `${styles.canvas} ${styles.canvasPainting}` : styles.canvas}
+        // Painting and probing are different intents on the same surface, so
+        // only one is live at a time.
+        onPointerDown={startStroke}
+        onPointerMove={continueStroke}
+        onPointerUp={endStroke}
+        onPointerCancel={endStroke}
+        onMouseMove={(e) => !painting && !pinned && setProbe(locate(e))}
+        onMouseLeave={() => !painting && !pinned && setProbe(null)}
         onClick={(e) => {
+          if (painting) return;
           setProbe(locate(e));
           setPinned((p) => !p);
         }}
       />
 
-      {probe && (
+      {!painting && probe && (
         <div
           // Pinned, the column takes the pointer so a deep core can be
           // scrolled. Unpinned it must not, or it would eat its own hover.

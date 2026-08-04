@@ -91,6 +91,13 @@
   border: 1px solid var(--rule);
 }
 
+/* Painting is a different intent on the same surface; the cursor says so, and
+   touch drags must scroll the canvas rather than the page. */
+.canvasPainting {
+  cursor: crosshair;
+  touch-action: none;
+}
+
 .canvas {
   display: block;
   width: 100%;
@@ -238,6 +245,63 @@
 .action:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.actionOn {
+  composes: action;
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ---- painting ---- */
+
+.studio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: var(--ink-sunk);
+  border: 1px solid var(--rule);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.swatch,
+.swatchOn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  cursor: pointer;
+}
+
+.swatchOn {
+  outline: 2px solid var(--signal);
+  outline-offset: 1px;
+}
+
+.studioRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* The visitor's own contribution, counted like anyone else's. */
+.yours {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--ink-sunk);
+  border-left: 2px solid var(--signal);
+  color: var(--muted);
+  font-size: var(--micro);
+  line-height: 1.6;
 }
 
 .actionNote {

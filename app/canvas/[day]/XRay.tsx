@@ -9,6 +9,7 @@ import {
   parsePalette,
   remapPalette,
 } from "../../../src/engine/basepaint";
+import { type Paint, applyPaint, decodePaint, encodePaint } from "../../../src/engine/paint";
 import { type Replay, replay, scalePixels, toRGBA } from "../../../src/engine/replay";
 import type { CanvasStats } from "../../../src/engine/stats";
 import {
@@ -29,6 +30,18 @@ interface Props {
   prev: number | null;
   next: number | null;
 }
+
+/**
+ * How much paint a link will carry, in hex characters — six per pixel in
+ * BasePaint's own `XXYYCC` format, so about 1,300 pixels.
+ *
+ * Past that the painting stays on screen and in the export but drops out of the
+ * URL, said plainly rather than silently truncating someone's work into a
+ * different picture. A run-length format would fit several times more, since
+ * brush strokes are contiguous; the raw blob is kept for now because it is
+ * exactly the format the chain stores.
+ */
+const MAX_PAINT_CHARS = 8_000;
 
 export default function XRay({ row, prev, next }: Props) {
   const [strokes, setStrokes] = useState<Stroke[] | null>(null);
@@ -125,11 +138,8 @@ export default function XRay({ row, prev, next }: Props) {
     (next: View) => {
       stopIntro();
       setView(next);
-      if (!r) return;
-      const q = encodeView(next, r.artists.length);
-      window.history.replaceState(null, "", q ? `?${q}` : window.location.pathname);
     },
-    [stopIntro, r],
+    [stopIntro],
   );
 
   /** The view the page was opened on, once the cast is known well enough to check it. */
@@ -143,16 +153,24 @@ export default function XRay({ row, prev, next }: Props) {
    * still a specific thing someone was sent, so the intro must not animate
    * away from it.
    */
-  const openedFromLink = useMemo(
-    () => (opening !== null && r !== null ? encodeView(opening.view, r.artists.length) !== "" : false),
-    [opening, r],
-  );
+  const openedFromLink = useMemo(() => {
+    if (opening === null || r === null) return false;
+    if (encodeView(opening.view, r.artists.length) !== "") return true;
+    return (new URLSearchParams(recipe).get("d") ?? "") !== "";
+  }, [opening, r, recipe]);
 
   useEffect(() => {
     if (!opening) return;
     setStaleRecipe(opening.stale);
     if (openedFromLink) setView(opening.view);
   }, [opening, openedFromLink]);
+
+  // A link can carry a painting; it arrives with the canvas, not before it.
+  useEffect(() => {
+    if (!r) return;
+    const blob = new URLSearchParams(recipe).get("d");
+    if (blob) setPaint(decodePaint(blob, r.size));
+  }, [r, recipe]);
 
   useEffect(() => {
     if (!r) return;
@@ -175,12 +193,76 @@ export default function XRay({ row, prev, next }: Props) {
     return stopIntro;
   }, [r, openedFromLink, row.maxDistinctDepth, stopIntro]);
 
-  const layer = useMemo(() => (r ? renderView(r, view) : null), [r, view]);
+  /**
+   * The visitor's own coat, over whatever variation they composed. It is not
+   * part of the View: the View is the controls, and this is content.
+   */
+  const [paint, setPaint] = useState<Paint>(() => new Map());
+  const [painting, setPainting] = useState(false);
+  const [brush, setBrush] = useState(1);
+  const [colour, setColour] = useState(0);
+  /** Snapshots taken at the start of each drag, so undo is one stroke. */
+  const [undoStack, setUndoStack] = useState<Paint[]>([]);
+
+  const base = useMemo(() => (r ? renderView(r, view) : null), [r, view]);
+  const layer = useMemo(
+    () => (base && r ? applyPaint(base, paint, r.area) : base),
+    [base, r, paint],
+  );
   const cast = useMemo(() => (r && layer ? roster(r, layer) : []), [r, layer]);
+
+  const addPaint = useCallback(
+    (pixels: [number, number][]) => {
+      if (!r) return;
+      setPaint((prev) => {
+        const next = new Map(prev);
+        for (const [x, y] of pixels) next.set(y * r.size + x, colour);
+        return next;
+      });
+    },
+    [r, colour],
+  );
+
+  const beginStroke = useCallback(() => {
+    setUndoStack((s) => [...s.slice(-19), paint]);
+  }, [paint]);
+
+  const undo = useCallback(() => {
+    setUndoStack((s) => {
+      if (s.length === 0) return s;
+      setPaint(s[s.length - 1]);
+      return s.slice(0, -1);
+    });
+  }, []);
+
+  const clearPaint = useCallback(() => {
+    setUndoStack((s) => [...s.slice(-19), paint]);
+    setPaint(new Map());
+  }, [paint]);
 
   // Untouched pixels are palette colour 0 in the published artwork, but in any
   // altered view they should read as absent rather than as deliberate paint.
   const altered = isAltered(view);
+
+  const paintBlob = useMemo(() => (r ? encodePaint(paint, r.size) : ""), [paint, r]);
+  const paintShareable = paintBlob.length <= MAX_PAINT_CHARS;
+
+  /**
+   * The address bar follows the whole state, written once things have settled
+   * rather than on every dab — a drag is thousands of events and re-encoding a
+   * painting on each one would be the slowest thing on the page. Skipped while
+   * the intro is animating, which would otherwise flicker a peel through it.
+   */
+  useEffect(() => {
+    if (!r || intro.current !== null) return;
+    const timer = setTimeout(() => {
+      const parts = [encodeView(view, r.artists.length)];
+      if (paintBlob && paintShareable) parts.push(`d=${paintBlob}`);
+      const q = parts.filter(Boolean).join("&");
+      window.history.replaceState(null, "", q ? `?${q}` : window.location.pathname);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [r, view, paintBlob, paintShareable]);
 
   const [copied, setCopied] = useState(false);
 
@@ -338,11 +420,67 @@ export default function XRay({ row, prev, next }: Props) {
               palette={palette}
               transparent={altered}
               dayStart={dayWindow(row.day).start}
+              painting={painting}
+              brush={brush}
+              onStrokeStart={beginStroke}
+              onPaint={addPaint}
             />
           )}
           <p className={styles.hint}>
-            {r ? "Hover or tap the canvas to pull a core sample. Click again to pin it." : " "}
+            {!r
+              ? " "
+              : painting
+                ? "Drag on the canvas to paint. Your coat sits on top of whatever you have composed."
+                : "Hover or tap the canvas to pull a core sample. Click again to pin it."}
           </p>
+
+          {r && painting && (
+            <div className={styles.studio}>
+              <div className={styles.swatches} role="group" aria-label="Colour">
+                {palette.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Colour ${i + 1} of ${palette.length}`}
+                    aria-pressed={colour === i}
+                    className={colour === i ? styles.swatchOn : styles.swatch}
+                    style={{ background: `rgb(${c[0]},${c[1]},${c[2]})` }}
+                    onClick={() => setColour(i)}
+                  />
+                ))}
+              </div>
+
+              <div className={styles.studioRow}>
+                {[1, 3, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={brush === n}
+                    className={brush === n ? styles.presetOn : styles.preset}
+                    onClick={() => setBrush(n)}
+                  >
+                    {n}px
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={styles.preset}
+                  disabled={undoStack.length === 0}
+                  onClick={undo}
+                >
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  className={styles.preset}
+                  disabled={paint.size === 0}
+                  onClick={clearPaint}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
 
           {r && (
             <div className={styles.actions}>
@@ -369,7 +507,24 @@ export default function XRay({ row, prev, next }: Props) {
                   own colours
                 </button>
               )}
+              <button
+                type="button"
+                aria-pressed={painting}
+                className={painting ? styles.actionOn : styles.action}
+                onClick={() => setPainting((p) => !p)}
+              >
+                {painting ? "done painting" : "paint"}
+              </button>
             </div>
+          )}
+
+          {r && paint.size > 0 && (
+            <p className={styles.yours}>
+              Your coat: <span className="tabular">{paint.size.toLocaleString()}</span> pixels,{" "}
+              {((100 * paint.size) / r.area).toFixed(1)}% of the canvas.
+              {!paintShareable &&
+                " Past what a link can carry — the canvas and the download keep every pixel, the URL does not. Undo a stroke or switch to a thinner brush to make it shareable."}
+            </p>
           )}
 
           {r && view.paletteDay !== null && (
