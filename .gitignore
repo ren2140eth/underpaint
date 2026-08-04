@@ -27,3 +27,4 @@ next-env.d.ts
 
 # projected from data/index.json by `npm run palettes`, which prebuild runs
 public/palettes.json
+.vercel

@@ -1,0 +1,11 @@
+# Vercel builds the site itself; uploading a local build wastes thousands of
+# file uploads and hits the per-deploy limit.
+out/
+
+# README illustrations — they belong on GitHub, not in the deployment.
+screenshots/
+
+# local scratch
+.playwright-mcp/
+.cache/
+data/strokes/
