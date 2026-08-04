@@ -29,6 +29,7 @@ import {
   renderUnderpainting,
   renderWithout,
   replay,
+  scalePixels,
   toRGBA,
 } from "../src/engine/replay";
 
@@ -186,6 +187,55 @@ describe("pixelHistory", () => {
     assert.throws(() => pixelHistory(r, 0, SIZE), /coordinate/);
     assert.throws(() => pixelHistory(r, -1, 0), /coordinate/);
     assert.throws(() => pixelHistory(r, 0.5, 0), /coordinate/);
+  });
+});
+
+describe("scalePixels", () => {
+  // A 2x2 image: red, green / blue, white.
+  const px = [
+    255, 0, 0, 255, 0, 255, 0, 255,
+    0, 0, 255, 255, 255, 255, 255, 255,
+  ];
+  const src = new Uint8Array(px);
+  const at = (out: Uint8Array, w: number, x: number, y: number) =>
+    [...out.slice((y * w + x) * 4, (y * w + x) * 4 + 4)];
+
+  it("returns the image unchanged at scale 1", () => {
+    assert.deepEqual([...scalePixels(src, 2, 1)], px);
+  });
+
+  it("grows each pixel into a solid block", () => {
+    const out = scalePixels(src, 2, 3);
+    assert.equal(out.length, 6 * 6 * 4);
+    // The whole top-left 3x3 block is the source's top-left pixel.
+    for (let y = 0; y < 3; y++) {
+      for (let x = 0; x < 3; x++) {
+        assert.deepEqual(at(out, 6, x, y), [255, 0, 0, 255], `${x},${y}`);
+      }
+    }
+  });
+
+  it("keeps the pixels in the right places", () => {
+    // Nearest-neighbour with a stride bug transposes or shears the image, and
+    // it is only visible on an asymmetric source.
+    const out = scalePixels(src, 2, 2);
+    assert.deepEqual(at(out, 4, 0, 0), [255, 0, 0, 255], "top-left stays red");
+    assert.deepEqual(at(out, 4, 3, 0), [0, 255, 0, 255], "top-right stays green");
+    assert.deepEqual(at(out, 4, 0, 3), [0, 0, 255, 255], "bottom-left stays blue");
+    assert.deepEqual(at(out, 4, 3, 3), [255, 255, 255, 255], "bottom-right stays white");
+  });
+
+  it("carries alpha through, so unpainted pixels stay absent", () => {
+    const clear = new Uint8Array([0, 0, 0, 0, 9, 9, 9, 255]);
+    const out = scalePixels(clear, 2, 2);
+    assert.equal(at(out, 4, 0, 0)[3], 0);
+    assert.equal(at(out, 4, 3, 0)[3], 255);
+  });
+
+  it("rejects a scale that is not a positive integer", () => {
+    for (const bad of [0, -1, 1.5]) {
+      assert.throws(() => scalePixels(src, 2, bad), /scale/, String(bad));
+    }
   });
 });
 

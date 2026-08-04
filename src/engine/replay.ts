@@ -187,6 +187,45 @@ export function pixelHistory(r: Replay, x: number, y: number): PaintEvent[] {
 }
 
 /**
+ * Nearest-neighbour upscale by a whole number.
+ *
+ * A 144px canvas exported at its own size is a thumbnail, and letting an image
+ * viewer stretch it applies smoothing, which is the one thing pixel art must
+ * not have. An integer scale keeps every source pixel a crisp square block.
+ */
+export function scalePixels(rgba: Uint8Array, size: number, scale: number): Uint8Array {
+  requireInt("scalePixels: size", size, 1, Number.MAX_SAFE_INTEGER);
+  requireInt("scalePixels: scale", scale, 1, Number.MAX_SAFE_INTEGER);
+
+  const wide = size * scale;
+  const out = new Uint8Array(wide * wide * 4);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const from = (y * size + x) * 4;
+      const r = rgba[from];
+      const g = rgba[from + 1];
+      const b = rgba[from + 2];
+      const a = rgba[from + 3];
+
+      for (let dy = 0; dy < scale; dy++) {
+        // The whole block row is one contiguous run, so fill it in one pass.
+        let to = ((y * scale + dy) * wide + x * scale) * 4;
+        for (let dx = 0; dx < scale; dx++) {
+          out[to] = r;
+          out[to + 1] = g;
+          out[to + 2] = b;
+          out[to + 3] = a;
+          to += 4;
+        }
+      }
+    }
+  }
+
+  return out;
+}
+
+/**
  * One coat in a core sample: a run of paint that reads as a single layer.
  *
  * A brush dragged over a coordinate, or a blob that repeats it, produces many

@@ -107,6 +107,99 @@ export function renderView(r: Replay, view: View): Layer {
 }
 
 /**
+ * Whether any control is off its default.
+ *
+ * Two things hang off this. Untouched pixels are drawn as absent rather than as
+ * palette colour 0, because in an altered view they are not deliberate paint.
+ * And a link that opens the x-ray on an altered view skips the intro, since the
+ * intro would animate away the thing the link was sent to show.
+ */
+export function isAltered(view: View): boolean {
+  return view.until !== null || view.peel > 0 || view.solo !== null || view.muted.size > 0;
+}
+
+/** A decoded recipe, and whether it named artists this canvas no longer has. */
+export interface DecodedView {
+  view: View;
+  /**
+   * The recipe named artists under a different cast size, so those indices no
+   * longer mean who they meant and were dropped.
+   */
+  stale: boolean;
+}
+
+const isIndex = (n: number, cast: number) => Number.isInteger(n) && n >= 0 && n < cast;
+
+/**
+ * A View as URL query parameters — the recipe a shared link carries.
+ *
+ * Only controls that are off their default appear, so an untouched canvas has
+ * a clean address bar and the same view always produces the same string. Muted
+ * artists are sorted for that reason too.
+ *
+ * `solo` and `muted` are indices into the replay's artist list, which is built
+ * in order of first appearance. That is deterministic for a settled canvas,
+ * whose strokes never change, but it is not self-describing: if the cast ever
+ * shifts, an old index silently points at a different person. `n` records the
+ * cast the link was made under so `decodeView` can refuse rather than lie.
+ */
+export function encodeView(view: View, artistCount: number): string {
+  const parts: string[] = [];
+
+  if (view.until !== null) parts.push(`t=${view.until}`);
+  if (view.peel > 0) parts.push(`p=${view.peel}`);
+  if (view.solo !== null) parts.push(`s=${view.solo}`);
+  if (view.muted.size > 0) {
+    parts.push(`m=${[...view.muted].sort((a, b) => a - b).join(".")}`);
+  }
+  if (view.solo !== null || view.muted.size > 0) parts.push(`n=${artistCount}`);
+
+  return parts.join("&");
+}
+
+/**
+ * Read a recipe back, discarding anything that does not describe this canvas.
+ *
+ * Every field is treated as hostile: a link is a string a stranger typed. A
+ * control that cannot be parsed falls back to its default rather than throwing,
+ * because a mangled link should still open the canvas.
+ */
+export function decodeView(search: string, artistCount: number): DecodedView {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+
+  const view: View = { ...WHOLE_CANVAS, muted: new Set() };
+  let stale = false;
+
+  const until = Number(params.get("t"));
+  if (params.has("t") && params.get("t") !== "" && Number.isFinite(until)) view.until = until;
+
+  const peel = Number(params.get("p"));
+  if (params.has("p") && Number.isInteger(peel) && peel >= 0) view.peel = peel;
+
+  // A recipe made under a different cast cannot be trusted about who is who.
+  const named = params.has("s") || params.has("m");
+  const guard = params.get("n");
+  if (named && guard !== null && Number(guard) !== artistCount) {
+    return { view, stale: true };
+  }
+
+  const solo = Number(params.get("s"));
+  if (params.has("s") && isIndex(solo, artistCount)) view.solo = solo;
+
+  const muted = params.get("m");
+  if (muted) {
+    const keep = new Set<number>();
+    for (const part of muted.split(".")) {
+      const i = Number(part);
+      if (part !== "" && isIndex(i, artistCount)) keep.add(i);
+    }
+    view.muted = keep;
+  }
+
+  return { view, stale };
+}
+
+/**
  * Every artist on the canvas, joined to what they own in a rendered view.
  *
  * `attribution` answers "whose paint am I looking at", so it can only name

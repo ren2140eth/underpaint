@@ -208,6 +208,52 @@
   color: var(--signal);
 }
 
+/* ---- share and export ---- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.action {
+  padding: 0.3rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--rule-strong);
+  color: var(--paper);
+  font: inherit;
+  font-size: var(--micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.action:hover {
+  border-color: var(--signal);
+  color: var(--signal);
+}
+
+.actionNote {
+  flex: 1 1 12rem;
+  min-width: 0;
+  color: var(--faint);
+  font-size: var(--micro);
+  line-height: 1.5;
+}
+
+/* A shared link that can no longer mean what it said. */
+.stale {
+  margin: 0.6rem 0 0;
+  padding: 0.5rem 0.6rem;
+  background: var(--ink-sunk);
+  border-left: 2px solid var(--signal);
+  color: var(--muted);
+  font-size: var(--micro);
+  line-height: 1.6;
+}
+
 /* ---- control panel ---- */
 
 .panel {
