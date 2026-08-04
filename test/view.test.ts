@@ -20,7 +20,7 @@ import {
   renderWithout,
   replay,
 } from "../src/engine/replay";
-import { UNDERPAINTING, WHOLE_CANVAS, type View, renderView } from "../src/engine/view";
+import { UNDERPAINTING, WHOLE_CANVAS, type View, renderView, roster } from "../src/engine/view";
 
 const SIZE = 4;
 const A = "0xAAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaA";
@@ -65,10 +65,67 @@ describe("renderView", () => {
     assert.deepEqual(painted(renderView(r, WHOLE_CANVAS)), painted(renderFinal(r)));
   });
 
-  it("matches renderPeel at every depth", () => {
+  it("matches renderPeel at every depth where no pixel was repainted in place", () => {
+    // renderPeel steps one paint event at a time; renderView steps one coat.
+    // On this fixture nobody repaints a coordinate, so a coat is an event and
+    // the two agree. See "peels whole coats" below for where they diverge.
     for (let n = 0; n <= 3; n++) {
       assert.deepEqual(painted(renderView(r, view({ peel: n }))), painted(renderPeel(r, n)), `peel ${n}`);
     }
+  });
+
+  it("peels whole coats, not paint events", () => {
+    // A brush dragged back over its own path, then covered by B doing the
+    // same. 310 of the 1,090 canvases contain repeats like this.
+    const repeated = replay(
+      [
+        mk(A, 100, "0x" + px(0, 0, 1) + px(0, 0, 1)),
+        mk(B, 200, "0x" + px(0, 0, 2) + px(0, 0, 2)),
+      ],
+      SIZE,
+    );
+
+    // Event-based peel lands on B's own second event: one coat off shows the
+    // surface again, so "Underpainting" silently does nothing on these pixels.
+    assert.deepEqual(painted(renderPeel(repeated, 1)), { "0,0": [2, 1] });
+
+    // Coat-based peel steps past the whole run and reveals A underneath.
+    assert.deepEqual(painted(renderView(repeated, view({ peel: 1 }))), { "0,0": [1, 0] });
+  });
+
+  it("counts a repainted run as one coat when peeling past the bottom", () => {
+    const repeated = replay([mk(A, 100, "0x" + px(0, 0, 1) + px(0, 0, 1) + px(0, 0, 1))], SIZE);
+    assert.deepEqual(painted(renderView(repeated, view({ peel: 0 }))), { "0,0": [1, 0] });
+    assert.deepEqual(painted(renderView(repeated, view({ peel: 1 }))), {});
+  });
+
+  it("starts a new coat when an artist returns to a colour after being covered", () => {
+    // A, B, A on one pixel is three coats even though A's colour repeats.
+    const returned = replay(
+      [
+        mk(A, 100, "0x" + px(0, 0, 1)),
+        mk(B, 200, "0x" + px(0, 0, 2)),
+        mk(A, 300, "0x" + px(0, 0, 1)),
+      ],
+      SIZE,
+    );
+    assert.deepEqual(painted(renderView(returned, view({ peel: 1 }))), { "0,0": [2, 1] });
+    assert.deepEqual(painted(renderView(returned, view({ peel: 2 }))), { "0,0": [1, 0] });
+  });
+
+  it("counts coats after the filters, not before", () => {
+    // Muting B must not leave B's run behind as a coat to step over: with B
+    // gone the pixel is one A coat, so peel 1 empties it.
+    const repeated = replay(
+      [
+        mk(A, 100, "0x" + px(0, 0, 1) + px(0, 0, 1)),
+        mk(B, 200, "0x" + px(0, 0, 2) + px(0, 0, 2)),
+      ],
+      SIZE,
+    );
+    const muted = new Set([1]);
+    assert.deepEqual(painted(renderView(repeated, view({ muted }))), { "0,0": [1, 0] });
+    assert.deepEqual(painted(renderView(repeated, view({ muted, peel: 1 }))), {});
   });
 
   it("solos everything an artist painted, not just what survived", () => {
@@ -126,5 +183,82 @@ describe("renderView", () => {
     assert.throws(() => renderView(r, view({ peel: -1 })), /peel/);
     assert.throws(() => renderView(r, view({ peel: 1.5 })), /peel/);
     assert.throws(() => renderView(r, view({ until: Number.NaN })), /until/);
+  });
+});
+
+describe("roster", () => {
+  const by = (entries: ReturnType<typeof roster>) =>
+    Object.fromEntries(entries.map((e) => [e.artist, e]));
+
+  it("lists every artist on the canvas, not only the visible ones", () => {
+    const entries = roster(r, renderView(r, WHOLE_CANVAS));
+    assert.equal(entries.length, r.artists.length);
+    assert.deepEqual(
+      entries.map((e) => e.artist).sort(),
+      [A, B, C].sort(),
+    );
+  });
+
+  it("reports pixels ever painted alongside the current visible share", () => {
+    const entries = by(roster(r, renderView(r, WHOLE_CANVAS)));
+
+    // A painted (0,0) and (1,0); both survive — (0,0) because A repainted over B.
+    assert.deepEqual(
+      { everPainted: entries[A].everPainted, visible: entries[A].visible, share: entries[A].share },
+      { everPainted: 2, visible: 2, share: 2 / 3 },
+    );
+
+    // B painted one pixel and A covered it. The row is the point of the site.
+    assert.deepEqual(
+      { everPainted: entries[B].everPainted, visible: entries[B].visible, share: entries[B].share },
+      { everPainted: 1, visible: 0, share: 0 },
+    );
+  });
+
+  it("counts a pixel once however many times an artist repainted it", () => {
+    // A touched (0,0) twice, at t=100 and t=300. That is one pixel of labour.
+    assert.equal(by(roster(r, renderView(r, WHOLE_CANVAS)))[A].everPainted, 2);
+  });
+
+  it("keeps a muted artist listed so the control that muted them survives", () => {
+    // The bug this guards: deriving the list from the render drops muted
+    // artists, and with them the only button that can unmute.
+    const muted = new Set([1]);
+    const entries = by(roster(r, renderView(r, view({ muted }))));
+    assert.equal(entries[B].everPainted, 1);
+    assert.equal(entries[B].visible, 0);
+  });
+
+  it("keeps a soloed artist's rivals listed", () => {
+    const entries = roster(r, renderView(r, view({ solo: 1 })));
+    assert.equal(entries.length, 3);
+    assert.equal(by(entries)[A].visible, 0);
+    assert.equal(by(entries)[B].visible, 1);
+  });
+
+  it("orders by what is visible now, then by total work", () => {
+    const entries = roster(r, renderView(r, WHOLE_CANVAS));
+    assert.deepEqual(
+      entries.map((e) => e.artist),
+      [A, C, B],
+    );
+  });
+
+  it("shares sum to one while anything is visible", () => {
+    const total = roster(r, renderView(r, WHOLE_CANVAS)).reduce((n, e) => n + e.share, 0);
+    assert.ok(Math.abs(total - 1) < 1e-12, `shares summed to ${total}`);
+  });
+
+  it("reports zero shares rather than dividing by zero on an empty view", () => {
+    const entries = roster(r, renderView(r, view({ peel: 99 })));
+    assert.equal(entries.length, 3);
+    assert.ok(entries.every((e) => e.share === 0 && e.visible === 0));
+    assert.ok(entries.every((e) => e.everPainted > 0));
+  });
+
+  it("carries the artist index the view filters speak in", () => {
+    for (const e of roster(r, renderView(r, WHOLE_CANVAS))) {
+      assert.equal(r.artists[e.index], e.artist);
+    }
   });
 });

@@ -20,6 +20,7 @@ import type { Stroke } from "../src/engine/basepaint";
 import {
   UNPAINTED,
   attribution,
+  coats,
   pixelHistory,
   renderAtTime,
   renderFinal,
@@ -185,6 +186,80 @@ describe("pixelHistory", () => {
     assert.throws(() => pixelHistory(r, 0, SIZE), /coordinate/);
     assert.throws(() => pixelHistory(r, -1, 0), /coordinate/);
     assert.throws(() => pixelHistory(r, 0.5, 0), /coordinate/);
+  });
+});
+
+describe("coats", () => {
+  const ev = (artist: number, color: number, time: number) => ({ artist, color, time });
+
+  it("leaves a history of distinct coats alone", () => {
+    const r = replay(fixture(), SIZE);
+    const stacked = coats(pixelHistory(r, 0, 0));
+    assert.equal(stacked.length, 3);
+    assert.deepEqual(
+      stacked.map((c) => [c.artist, c.color, c.repeats]),
+      [
+        [0, 0, 1],
+        [1, 2, 1],
+        [0, 3, 1],
+      ],
+    );
+  });
+
+  it("collapses a run of one artist repainting one colour", () => {
+    // The 8,104-event pixel on day 131 is a blob hammering one coordinate.
+    // That is one coat of paint, not 8,104 rows in a tooltip.
+    const stacked = coats([ev(0, 5, 100), ev(0, 5, 101), ev(0, 5, 102)]);
+    assert.equal(stacked.length, 1);
+    assert.equal(stacked[0].repeats, 3);
+  });
+
+  it("keeps the first and last time of a collapsed run", () => {
+    const stacked = coats([ev(0, 5, 100), ev(0, 5, 101), ev(0, 5, 140)]);
+    assert.deepEqual([stacked[0].first, stacked[0].last], [100, 140]);
+  });
+
+  it("does not merge across a different artist", () => {
+    // A, B, A on one colour is genuine burial — B's coat is under A's.
+    const stacked = coats([ev(0, 5, 100), ev(1, 5, 200), ev(0, 5, 300)]);
+    assert.equal(stacked.length, 3);
+  });
+
+  it("does not merge across a colour change by the same artist", () => {
+    const stacked = coats([ev(0, 5, 100), ev(0, 6, 200), ev(0, 5, 300)]);
+    assert.equal(stacked.length, 3);
+  });
+
+  it("merges only consecutive runs, so a returning artist gets a new coat", () => {
+    const stacked = coats([ev(0, 5, 100), ev(0, 5, 110), ev(1, 7, 200), ev(0, 5, 300)]);
+    assert.deepEqual(
+      stacked.map((c) => [c.artist, c.repeats]),
+      [
+        [0, 2],
+        [1, 1],
+        [0, 1],
+      ],
+    );
+  });
+
+  it("preserves order, oldest first", () => {
+    const stacked = coats([ev(0, 1, 100), ev(1, 2, 200), ev(2, 3, 300)]);
+    assert.deepEqual(
+      stacked.map((c) => c.first),
+      [100, 200, 300],
+    );
+  });
+
+  it("returns nothing for a pixel that was never painted", () => {
+    assert.deepEqual(coats([]), []);
+  });
+
+  it("accounts for every event it was given", () => {
+    const events = [ev(0, 5, 100), ev(0, 5, 101), ev(1, 7, 200), ev(1, 7, 201), ev(1, 7, 202)];
+    assert.equal(
+      coats(events).reduce((n, c) => n + c.repeats, 0),
+      events.length,
+    );
   });
 });
 

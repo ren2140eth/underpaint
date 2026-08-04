@@ -119,6 +119,11 @@
   pointer-events: none;
 }
 
+/* Pinned: the core can be scrolled without the canvas stealing the hover. */
+.coreHeld {
+  pointer-events: auto;
+}
+
 .coreHead {
   display: flex;
   justify-content: space-between;
@@ -130,13 +135,21 @@
   color: var(--muted);
 }
 
+/*
+ * Bounded, because a deep pixel is 85 coats and the stage is only so tall.
+ * The list is already newest-first in the DOM, so it opens on the surviving
+ * paint and you scroll down into what is buried.
+ */
 .coreStack {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 1px;
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: 15rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .coreCoat {
@@ -157,13 +170,25 @@
   border: 1px solid rgba(0, 0, 0, 0.4);
 }
 
-.coreCoat:last-child .coreSwatch {
+.coreCoat:first-child .coreSwatch {
   box-shadow: inset 0 0 0 1px var(--signal);
 }
 
 .coreArtist {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* How many paint events this one coat collapses. */
+.coreRepeats {
+  flex: none;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .coreTime {
@@ -287,6 +312,28 @@
 
 /* ---- attribution ---- */
 
+.filters {
+  display: flex;
+  gap: 0.4rem;
+  align-items: stretch;
+  margin-top: 0.15rem;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  background: var(--ink-sunk);
+  border: 1px solid var(--rule-strong);
+  color: var(--paper);
+  font: inherit;
+  font-size: var(--micro);
+}
+
+.search::placeholder {
+  color: var(--faint);
+}
+
 .split {
   display: flex;
   flex-direction: column;
@@ -337,7 +384,8 @@
 }
 
 .splitLabel,
-.splitShare {
+.splitShare,
+.splitBuried {
   position: relative;
   font-size: var(--micro);
 }
@@ -345,6 +393,13 @@
 .splitShare {
   font-variant-numeric: tabular-nums;
   color: var(--paper);
+}
+
+/* Artists with nothing left are the subject, not an error state. */
+.splitBuried {
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+  white-space: nowrap;
 }
 
 .mute,

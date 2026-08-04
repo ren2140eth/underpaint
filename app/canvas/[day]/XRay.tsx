@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type Stroke, dayWindow, fetchStrokes, parsePalette } from "../../../src/engine/basepaint";
-import { type Replay, attribution, replay } from "../../../src/engine/replay";
+import { type Replay, replay } from "../../../src/engine/replay";
 import type { CanvasStats } from "../../../src/engine/stats";
-import { WHOLE_CANVAS, type View, renderView } from "../../../src/engine/view";
+import { WHOLE_CANVAS, type View, renderView, roster } from "../../../src/engine/view";
 import CanvasStage from "./CanvasStage";
 import Panel from "./Panel";
 import styles from "./xray.module.css";
@@ -20,6 +20,8 @@ export default function XRay({ row, prev, next }: Props) {
   const [strokes, setStrokes] = useState<Stroke[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>(WHOLE_CANVAS);
+  /** Bumped by "try again". The fetch is an effect, so retrying means re-running it. */
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -34,7 +36,7 @@ export default function XRay({ row, prev, next }: Props) {
     return () => {
       live = false;
     };
-  }, [row.day]);
+  }, [row.day, attempt]);
 
   const r: Replay | null = useMemo(
     () => (strokes ? replay(strokes, row.size) : null),
@@ -74,7 +76,7 @@ export default function XRay({ row, prev, next }: Props) {
     if (!r) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const depth = Math.min(5, Math.max(0, row.maxDepth - 1));
+    const depth = Math.min(5, Math.max(0, row.maxDistinctDepth - 1));
     if (depth === 0) return;
 
     let coat = depth;
@@ -86,10 +88,10 @@ export default function XRay({ row, prev, next }: Props) {
     }, 150);
 
     return stopIntro;
-  }, [r, row.maxDepth, stopIntro]);
+  }, [r, row.maxDistinctDepth, stopIntro]);
 
   const layer = useMemo(() => (r ? renderView(r, view) : null), [r, view]);
-  const split = useMemo(() => (r && layer ? attribution(r, layer) : []), [r, layer]);
+  const cast = useMemo(() => (r && layer ? roster(r, layer) : []), [r, layer]);
 
   // Untouched pixels are palette colour 0 in the published artwork, but in any
   // altered view they should read as absent rather than as deliberate paint.
@@ -155,7 +157,11 @@ export default function XRay({ row, prev, next }: Props) {
             <div className={styles.state}>
               <p className={styles.stateTitle}>Couldn't load this canvas</p>
               <p>{error}</p>
-              <button type="button" onClick={() => setStrokes(null)} className={styles.retry}>
+              <button
+                type="button"
+                onClick={() => setAttempt((n) => n + 1)}
+                className={styles.retry}
+              >
                 Try again
               </button>
             </div>
@@ -183,7 +189,7 @@ export default function XRay({ row, prev, next }: Props) {
           </p>
         </div>
 
-        <Panel replay={r} row={row} view={view} setView={changeView} split={split} />
+        <Panel replay={r} row={row} view={view} setView={changeView} roster={cast} />
       </div>
     </div>
   );

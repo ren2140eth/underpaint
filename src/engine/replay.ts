@@ -186,6 +186,45 @@ export function pixelHistory(r: Replay, x: number, y: number): PaintEvent[] {
   return stack.map((i) => ({ artist: r.evArtist[i], color: r.evColor[i], time: r.evTime[i] }));
 }
 
+/**
+ * One coat in a core sample: a run of paint that reads as a single layer.
+ *
+ * A brush dragged over a coordinate, or a blob that repeats it, produces many
+ * events that all leave the same colour from the same hand. Visually that is
+ * one coat, and the deepest pixel on day 131 has 8,104 events behind it.
+ */
+export interface Coat {
+  artist: number;
+  color: number;
+  /** how many paint events this coat collapses */
+  repeats: number;
+  first: number;
+  last: number;
+}
+
+/**
+ * Collapse a pixel's history into coats, oldest first.
+ *
+ * Only consecutive runs merge. An artist returning to a colour after someone
+ * painted over them gets a fresh coat, because that burial is real and is the
+ * whole subject of the x-ray.
+ */
+export function coats(history: PaintEvent[]): Coat[] {
+  const out: Coat[] = [];
+
+  for (const e of history) {
+    const top = out[out.length - 1];
+    if (top && top.artist === e.artist && top.color === e.color) {
+      top.repeats++;
+      top.last = e.time;
+      continue;
+    }
+    out.push({ artist: e.artist, color: e.color, repeats: 1, first: e.time, last: e.time });
+  }
+
+  return out;
+}
+
 /** A rendered variation: palette index per pixel, plus who owns each one. */
 export interface Layer {
   color: Int16Array;

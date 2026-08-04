@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Layer, Replay } from "../../../src/engine/replay";
-import { pixelHistory, toRGBA } from "../../../src/engine/replay";
+import { coats, pixelHistory, toRGBA } from "../../../src/engine/replay";
 import styles from "./xray.module.css";
 
 interface Props {
@@ -65,13 +65,24 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
     [replay.size],
   );
 
-  // Oldest first, and the list is laid out bottom-up, so the column reads like
-  // a real core sample: first coat at the bottom, surviving paint on top.
+  // Newest first, so the column reads like a real core sample: surviving paint
+  // at the top, first coat at the bottom. Reversed here rather than with
+  // column-reverse so that a column tall enough to scroll still opens on the
+  // surviving coat instead of at the bottom of the borehole.
+  //
+  // Grouped into coats rather than raw events: the deepest pixel on day 131
+  // carries 8,104 events, which is 85 coats. One row per event would build
+  // 8,104 DOM nodes to say the same thing.
   const core = useMemo(
-    () => (probe ? pixelHistory(replay, probe.x, probe.y) : []),
+    () => (probe ? coats(pixelHistory(replay, probe.x, probe.y)).reverse() : []),
     [probe, replay],
   );
+  const events = useMemo(() => core.reduce((n, c) => n + c.repeats, 0), [core]);
+
   const onLeft = probe !== null && probe.left > 55;
+  // A tall column pinned to the cursor would hang off the top or bottom of the
+  // stage. Past the halfway line it hangs upward from the cursor instead.
+  const above = probe !== null && probe.top > 50;
 
   return (
     <div className={styles.stage}>
@@ -90,12 +101,15 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
 
       {probe && (
         <div
-          className={styles.core}
+          // Pinned, the column takes the pointer so a deep core can be
+          // scrolled. Unpinned it must not, or it would eat its own hover.
+          className={pinned ? `${styles.core} ${styles.coreHeld}` : styles.core}
           style={{
             left: `${probe.left}%`,
             top: `${probe.top}%`,
-            transform: onLeft ? "translate(-100%, -50%)" : "translate(0, -50%)",
+            transform: `translate(${onLeft ? "-100%" : "0"}, ${above ? "-100%" : "0"})`,
             marginLeft: onLeft ? "-14px" : "14px",
+            marginTop: above ? "-14px" : "14px",
           }}
         >
           <div className={styles.coreHead}>
@@ -110,22 +124,28 @@ export default function CanvasStage({ replay, layer, palette, transparent, daySt
           ) : (
             <>
               <ol className={styles.coreStack}>
-                {core.map((event, i) => (
-                  <li key={`${event.time}-${i}`} className={styles.coreCoat}>
+                {core.map((coat, i) => (
+                  <li key={`${coat.first}-${i}`} className={styles.coreCoat}>
                     <span
                       className={styles.coreSwatch}
-                      style={{ background: hex(palette[event.color]) }}
+                      style={{ background: hex(palette[coat.color]) }}
                     />
                     <span className={styles.coreArtist}>
-                      {shortAddress(replay.artists[event.artist])}
+                      {shortAddress(replay.artists[coat.artist])}
+                      {coat.repeats > 1 && (
+                        <span className={styles.coreRepeats} title="paint events in this coat">
+                          ×{coat.repeats}
+                        </span>
+                      )}
                     </span>
-                    <span className={styles.coreTime}>{intoDay(event.time, dayStart)}</span>
+                    <span className={styles.coreTime}>{intoDay(coat.first, dayStart)}</span>
                   </li>
                 ))}
               </ol>
               <p className={styles.coreFoot}>
                 {core.length} {core.length === 1 ? "coat" : "coats"}
                 {core.length > 1 && `, ${core.length - 1} buried`}
+                {events > core.length && ` · ${events.toLocaleString()} paint events`}
               </p>
             </>
           )}
