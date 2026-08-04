@@ -44,6 +44,8 @@ export interface Replay {
   owner: Int16Array;
   /** per pixel: how many times it was painted */
   depth: Uint16Array;
+  /** per pixel: how many separate strokes touched it, ignoring repeats within one */
+  distinctDepth: Uint16Array;
   /** per pixel: indices into the event arrays, oldest first */
   stacks: number[][];
   evArtist: Int32Array;
@@ -57,6 +59,10 @@ export interface Replay {
    * "buried labour" measures paint rather than repetition.
    */
   selfOverlap: number;
+  /** triplets naming a coordinate outside the grid, so no paint could land */
+  offGrid: number;
+  /** triplets that were not six hex characters — truncated tails, bad bytes */
+  malformed: number;
   firstTime: number;
   lastTime: number;
 }
@@ -76,6 +82,7 @@ export function replay(strokes: Stroke[], size: number): Replay {
   const color = new Int16Array(area).fill(UNPAINTED);
   const owner = new Int16Array(area).fill(UNPAINTED);
   const depth = new Uint16Array(area);
+  const distinctDepth = new Uint16Array(area);
   const stacks: number[][] = Array.from({ length: area }, () => []);
 
   const artists: string[] = [];
@@ -91,6 +98,8 @@ export function replay(strokes: Stroke[], size: number): Replay {
 
   let n = 0;
   let selfOverlap = 0;
+  let offGrid = 0;
+  let malformed = 0;
   let firstTime = Infinity;
   let lastTime = -Infinity;
 
@@ -116,15 +125,22 @@ export function replay(strokes: Stroke[], size: number): Replay {
 
     for (let i = 0; i + 6 <= hex.length; i += 6) {
       const triplet = hex.slice(i, i + 6);
-      if (!TRIPLET.test(triplet)) continue;
+      if (!TRIPLET.test(triplet)) {
+        malformed++;
+        continue;
+      }
 
       const x = parseInt(triplet.slice(0, 2), 16);
       const y = parseInt(triplet.slice(2, 4), 16);
       const c = parseInt(triplet.slice(4, 6), 16);
-      if (x >= size || y >= size) continue;
+      if (x >= size || y >= size) {
+        offGrid++;
+        continue;
+      }
 
       const p = y * size + x;
       if (touchedBy[p] === strokeNumber) selfOverlap++;
+      else distinctDepth[p]++;
       touchedBy[p] = strokeNumber;
 
       evArtist[n] = artist;
@@ -146,12 +162,15 @@ export function replay(strokes: Stroke[], size: number): Replay {
     color,
     owner,
     depth,
+    distinctDepth,
     stacks,
     evArtist,
     evColor,
     evTime,
     totalPlaced: n,
     selfOverlap,
+    offGrid,
+    malformed,
     firstTime: firstTime === Infinity ? 0 : firstTime,
     lastTime: lastTime === -Infinity ? 0 : lastTime,
   };

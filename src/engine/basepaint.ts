@@ -28,6 +28,22 @@ export function dayWindow(day: number): { start: number; end: number } {
   return { start, end: start + DAY_SECONDS };
 }
 
+/**
+ * A canvas can still be minted for 24h after painting closes, so its mint count
+ * and earnings are not final until then.
+ *
+ * Measured 2026-08-03: days 1085–1089, all past this cutoff, had not moved
+ * since the previous ingest, while day 1090 was inside its sale window sitting
+ * at 35 mints against a median of ~70 for its neighbours.
+ */
+export function mintWindowEnd(day: number): number {
+  return dayWindow(day).end + DAY_SECONDS;
+}
+
+export function mintWindowOpen(day: number, now = Date.now() / 1000): boolean {
+  return now < mintWindowEnd(day);
+}
+
 export interface Stroke {
   id: string;
   accountId: string;
@@ -107,12 +123,27 @@ interface Theme {
   palette: string[];
 }
 
-async function fetchTheme(day: number): Promise<Theme> {
-  const res = await fetch(`https://basepaint.xyz/api/theme/${day}`, {
-    headers: { "user-agent": "curl/8.5.0" },
-  });
-  if (!res.ok) throw new Error(`theme ${res.status} ${res.statusText}`);
-  return (await res.json()) as Theme;
+/**
+ * Retried like the GraphQL query: an ingest asks for 81 themes in one pass and
+ * the endpoint intermittently refuses a couple under concurrency. Without this
+ * a whole run is thrown away over two transient failures.
+ */
+async function fetchTheme(day: number, attempts = 4): Promise<Theme> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const res = await fetch(`https://basepaint.xyz/api/theme/${day}`, {
+        headers: { "user-agent": "curl/8.5.0" },
+      });
+      if (!res.ok) throw new Error(`theme ${res.status} ${res.statusText}`);
+      return (await res.json()) as Theme;
+    } catch (err) {
+      lastError = err;
+      if (attempt < attempts) await sleep(500 * 2 ** (attempt - 1));
+    }
+  }
+  throw new Error(`day ${day}: theme lookup failed after ${attempts} attempts: ${lastError}`);
 }
 
 type RawCanvas = Omit<CanvasMeta, "filledFromTheme"> & { size: number | null; name: string | null };
@@ -132,28 +163,27 @@ export async function fetchCanvas(day: number): Promise<CanvasMeta> {
   }
 
   // 81 canvases are missing all three in the indexer. The site's own theme
-  // endpoint still has them, and its sizes agree with canvasSize() everywhere
-  // they can be checked.
-  try {
-    const theme = await fetchTheme(day);
-    return {
-      ...raw,
-      size: raw.size ?? theme.size,
-      name: raw.name ?? theme.theme,
-      palette: raw.palette ?? theme.palette.join(","),
-      proposer: raw.proposer ?? theme.proposer,
-      filledFromTheme: true,
-    };
-  } catch {
-    // Statistics only need the size, so fall back to the era rule rather than
-    // dropping the canvas out of the index entirely.
-    return {
-      ...raw,
-      size: raw.size ?? canvasSize(day),
-      name: raw.name ?? `Canvas ${day}`,
-      filledFromTheme: false,
-    };
+  // endpoint still has them. A failure here throws rather than fabricating a
+  // name and guessing the size: a made-up row cached under the canvas's number
+  // is worse than a canvas the next run retries.
+  const theme = await fetchTheme(day);
+  const size = raw.size ?? theme.size;
+
+  // The era rule is a cross-check on the theme API, not a substitute for it.
+  if (size !== canvasSize(day)) {
+    throw new Error(
+      `day ${day}: size ${size} contradicts the era rule (${canvasSize(day)}) — check LAST_144_DAY`,
+    );
   }
+
+  return {
+    ...raw,
+    size,
+    name: raw.name ?? theme.theme,
+    palette: raw.palette ?? theme.palette.join(","),
+    proposer: raw.proposer ?? theme.proposer,
+    filledFromTheme: true,
+  };
 }
 
 /** All strokes for a day, oldest first. Paginates; some canvases exceed 1000. */

@@ -15,9 +15,9 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import type { CanvasMeta, Stroke } from "../src/engine/basepaint.js";
-import { dayWindow } from "../src/engine/basepaint.js";
+import { dayWindow, mintWindowOpen } from "../src/engine/basepaint.js";
 import { replay } from "../src/engine/replay.js";
-import { canvasStats } from "../src/engine/stats.js";
+import { canvasStats, replayStats } from "../src/engine/stats.js";
 
 const SIZE = 4;
 const DAY = 1;
@@ -61,7 +61,13 @@ const fixture = () => [
   mk(A, 23 * HOUR, "0x" + px(0, 0, 3)),
 ];
 
-const stats = (over?: Partial<CanvasMeta>) => canvasStats(replay(fixture(), SIZE), meta(over));
+/** Long past day 1's mint window, so economics are final in these fixtures. */
+const NOW = START + 30 * 86400;
+
+const statsFor = (strokes: Stroke[], over?: Partial<CanvasMeta>) =>
+  canvasStats(replayStats(replay(strokes, SIZE), DAY), meta(over), NOW);
+
+const stats = (over?: Partial<CanvasMeta>) => statsFor(fixture(), over);
 
 describe("dayWindow", () => {
   it("is a 24h window anchored on the first canvas", () => {
@@ -74,6 +80,13 @@ describe("dayWindow", () => {
   it("rejects a day before the first canvas", () => {
     assert.throws(() => dayWindow(0), /day/);
     assert.throws(() => dayWindow(1.5), /day/);
+  });
+
+  it("keeps the mint window open for 24h after painting closes", () => {
+    const { end } = dayWindow(1);
+    assert.equal(mintWindowOpen(1, end - 1), true); // still being painted
+    assert.equal(mintWindowOpen(1, end + 3600), true); // painted, still on sale
+    assert.equal(mintWindowOpen(1, end + 86400), false);
   });
 });
 
@@ -126,20 +139,14 @@ describe("canvasStats", () => {
   it("separates submitted pixels from the ones that landed on the grid", () => {
     assert.equal(stats().submitted, 5);
     assert.equal(stats().offGrid, 0);
-
-    // The indexer counts pixels the artist paid for; coordinates past the edge
-    // of the grid never land. Seen on the 144px-era canvases, never after.
-    const s = stats({ pixelsCount: 7 });
-    assert.equal(s.placed, 5);
-    assert.equal(s.submitted, 7);
-    assert.equal(s.offGrid, 2);
+    assert.equal(stats().unaccounted, 0);
   });
 
   it("excludes within-stroke repetition from buried labour", () => {
     // One stroke naming (3,3) four times: one new pixel, three repeats. Without
     // this the canvas would look like three more pixels of buried work.
     const strokes = [...fixture(), mk(A, 3 * HOUR, "0x" + px(3, 3, 1).repeat(4))];
-    const s = canvasStats(replay(strokes, SIZE), meta({ pixelsCount: 9 }));
+    const s = statsFor(strokes, { pixelsCount: 9 });
 
     assert.equal(s.placed, 9);
     assert.equal(s.selfOverlap, 3);
@@ -150,23 +157,52 @@ describe("canvasStats", () => {
     assert.equal(s.meanDepth, 6 / 4);
   });
 
-  it("counts off-grid pixels from real out-of-range coordinates", () => {
+  it("measures off-grid pixels during decode rather than inferring them", () => {
     // (200, 1) encodes fine in a byte but cannot land on a 4x4 grid.
     const strokes = [...fixture(), mk(A, 3 * HOUR, "0x" + px(200, 1, 3))];
-    const s = canvasStats(replay(strokes, SIZE), meta({ pixelsCount: 6 }));
+    const s = statsFor(strokes, { pixelsCount: 6 });
     assert.equal(s.placed, 5);
     assert.equal(s.offGrid, 1);
+    assert.equal(s.unaccounted, 0);
+  });
+
+  it("counts malformed triplets separately from off-grid ones", () => {
+    const strokes = [...fixture(), mk(A, 3 * HOUR, "0x" + px(200, 1, 3) + "zzzzzz")];
+    const s = statsFor(strokes, { pixelsCount: 7 });
+    assert.equal(s.offGrid, 1);
+    assert.equal(s.malformed, 1);
+    assert.equal(s.unaccounted, 0);
+  });
+
+  it("flags a submitted count the decode cannot account for", () => {
+    // Nothing in the blobs explains the extra pixel the indexer claims.
+    assert.equal(stats({ pixelsCount: 6 }).unaccounted, 1);
+  });
+
+  it("reports raw and distinct depth separately", () => {
+    // One stroke naming (3,3) four times is four coats of literal event stack
+    // but a single stroke touching the pixel.
+    const s = statsFor([...fixture(), mk(A, 3 * HOUR, "0x" + px(3, 3, 1).repeat(4))]);
+    assert.equal(s.maxDepth, 4);
+    assert.equal(s.maxDistinctDepth, 3); // (0,0), touched by three separate strokes
+  });
+
+  it("marks a canvas whose mint window is still open", () => {
+    // Mints and earnings keep moving for 24h after painting closes.
+    const open = canvasStats(replayStats(replay(fixture(), SIZE), DAY), meta(), START + 86400 + 3600);
+    assert.equal(open.mintWindowOpen, true);
+    assert.equal(stats().mintWindowOpen, false);
   });
 
   it("flags strokes landing outside the scheduled window", () => {
     const strokes = [...fixture(), mk(A, 40 * HOUR, "0x" + px(3, 3, 1))];
-    const s = canvasStats(replay(strokes, SIZE), meta());
+    const s = statsFor(strokes);
     assert.equal(s.strokesOutsideWindow, 1);
     assert.equal(stats().strokesOutsideWindow, 0);
   });
 
   it("is all zeroes for an untouched canvas rather than NaN", () => {
-    const s = canvasStats(replay([], SIZE), meta({ pixelsCount: 0, totalMints: 0 }));
+    const s = statsFor([], { pixelsCount: 0, totalMints: 0 });
     assert.equal(s.placed, 0);
     assert.equal(s.visible, 0);
     assert.equal(s.buriedShare, 0);

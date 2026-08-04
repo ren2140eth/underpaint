@@ -12,7 +12,7 @@
 import { PNG } from "pngjs";
 import { fetchCanvas, fetchStrokes, parsePalette } from "../src/engine/basepaint.js";
 import { replay, renderFinal, toRGBA, UNPAINTED } from "../src/engine/replay.js";
-import { canvasStats } from "../src/engine/stats.js";
+import { replayStats } from "../src/engine/stats.js";
 
 /**
  * Headline numbers measured by hand when the project was scoped. They are
@@ -119,7 +119,7 @@ async function verifyDay(day: number): Promise<Result> {
     }
   }
 
-  const badStats = checkGroundTruth(day, canvasStats(r, canvas) as unknown as Record<string, unknown>);
+  const badStats = checkGroundTruth(day, replayStats(r, day) as unknown as Record<string, unknown>);
 
   const pct = ((100 * mismatches) / r.area).toFixed(4);
   return {

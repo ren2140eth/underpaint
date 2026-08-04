@@ -21,12 +21,15 @@ proof; nothing in the next section is clickable yet.
 
 - **X-ray** — scrub through the day, peel paint layers back one at a time, solo
   or mute individual artists, or promote the buried underpainting to the
-  surface. Every BasePaint canvas is a palimpsest up to 7 layers deep.
+  surface. Every BasePaint canvas is a palimpsest: on the median canvas the
+  most-worked pixel is repainted 19 times, and on day 382 one pixel was painted
+  by 271 separate strokes.
 - **Pixel inspector** — click any pixel for its full history: every artist who
   painted it, in order, with colours and timestamps.
-- **Canvas index** — all ~1,090 canvases ranked by things you can't currently
+- **Canvas index** — all 1,090 canvases ranked by things you can't currently
   see: buried labour, artist concentration, coverage, and effort relative to how
-  many people minted it.
+  many people minted it. Precomputed in `data/index.json`; **61.9% of all
+  painting in BasePaint history is buried**.
 
 Every variation shows an attribution split — which artists' pixels are visible
 in the image you're looking at, by share. Change a control and the split
@@ -65,7 +68,10 @@ GraphQL indexer; there is no backend and nothing is stored server-side.
 ```
 src/engine/basepaint.ts   GraphQL client (paginated, BigInt id ordering)
 src/engine/replay.ts      stroke replay + all render modes
+src/engine/stats.ts       per-canvas statistics
 scripts/verify.ts         correctness proof against published artwork
+scripts/ingest.ts         precompute the canvas index
+data/index.json           1,090 canvases, committed
 test/                     offline unit fixtures for every render mode
 ```
 
