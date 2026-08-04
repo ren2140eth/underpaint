@@ -13,8 +13,7 @@ Underpaint replays every stroke of any canvas so you can see what's underneath.
 visible-artist count rising from 36 to 57](screenshots/underpainting.png)
 
 *Day 1080, one coat down. Contributions from 29 artists reappear, while work from
-8 surface artists falls away because it had no earlier coat beneath it. The
-checkerboard marks pixels with no buried layer.*
+8 surface artists falls away because it had no earlier coat beneath it.*
 
 ## What it does
 
