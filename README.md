@@ -37,33 +37,21 @@ and the surface coat at the top.
 ![A pinned core sample on day 131 showing 85 coats over 8,104 paint
 events](screenshots/core-sample.png)
 
-A coat is a continuous run of one colour by one artist, not an individual paint
-event. 
-
 ### Remix
 
 **Remix palette** applies another canvas's colours while preserving the original
 paint and attribution.
 
 Each remix records its palette day in the URL, so shared links reproduce the
-same result.
+same result. Have fun remix old paintings and see how they look then share!
 
 ### Paint
 
 Compose a variation by changing time, coats, artists, or palette, then **paint**
-on top. Palette remixes recolour your additions with the rest of the canvas.
-
-The brush can keep a borrowed palette after **Own colours** restores the canvas,
-letting you paint one day's colours onto another. **Brush: own colours** restores
-the original brush palette. Borrowed palettes are resampled to the canvas's
-colour count.
+on top. Peel a painting back, remix colors then paint on top of it and create something new!
 
 The attribution panel includes your pixels in the visible total and updates each
 artist's displayed share as you paint.
-
-Paint is encoded in the link as BasePaint-format `XXYYCC` triplets. Above roughly
-1,300 pixels it no longer fits safely in a URL, but remains intact on the canvas
-and in PNG exports.
 
 ### Archive
 
@@ -92,12 +80,6 @@ Nothing is stored server-side, and the same link produces the same image.
              │            └─────────────────────────── two coats stripped
              └──────────────────────────────────────── as it stood at hour 14
 ```
-
-`solo` and `muted` are indices into the canvas's artist list, ordered by first
-appearance. That order is stable for a settled canvas but not self-describing,
-so links also carry the artist count. If it changes, Underpaint removes the
-artist-specific controls instead of applying them to the wrong person.
-
 **Download PNG** exports whatever is on screen with the recipe in the filename.
 
 ## Licence
