@@ -20,7 +20,11 @@ interface Props {
 interface Column {
   key: SortKey;
   label: string;
-  /** what the number means, since each one is derived here rather than read off a feed */
+  /**
+   * What the number means, since each one is derived here rather than read off
+   * a feed. Shown twice — as the header's tooltip and as the glossary entry
+   * below the table — from this one string, so the two cannot drift apart.
+   */
   note: string;
   render: (r: IndexRow) => string;
   /** the direction a first click should use — for most metrics, biggest first */
@@ -34,28 +38,28 @@ const COLUMNS: Column[] = [
   {
     key: "buriedShare",
     label: "Buried",
-    note: "Share of the paint placed here that later coats cover.",
+    note: "Share of the paint laid down here that later coats cover. Counted over placements that put paint somewhere, so a brush crossing its own path inside one stroke is not counted twice.",
     render: (r) => pct(r.buriedShare),
     first: "desc",
   },
   {
     key: "placed",
     label: "Placed",
-    note: "Pixel placements, which is what the day's ETH was split on.",
+    note: "Pixel placements the indexer recorded, which is what the day's ETH was split on. This one does include repeats inside a stroke, so it sits a little above the count Buried and Effort/mint are measured against.",
     render: (r) => num(r.placed),
     first: "desc",
   },
   {
     key: "coverage",
     label: "Coverage",
-    note: "Share of the grid that got painted at all.",
+    note: "Share of the grid that ever held paint.",
     render: (r) => pct(r.coverage),
     first: "desc",
   },
   {
     key: "meanDepth",
     label: "Depth",
-    note: "Coats on the average painted pixel.",
+    note: "Coats on the average painted pixel: placements divided by the pixels they reached.",
     render: (r) => r.meanDepth.toFixed(2),
     first: "desc",
   },
@@ -83,14 +87,14 @@ const COLUMNS: Column[] = [
   {
     key: "lateSurge",
     label: "Late",
-    note: "Share of the finished image laid down in the final six hours.",
+    note: "Share of the finished image laid down in the last six hours of the canvas's 24-hour window.",
     render: (r) => pct(r.lateSurge),
     first: "desc",
   },
   {
     key: "mints",
     label: "Mints",
-    note: "Editions sold.",
+    note: "Editions of this canvas sold.",
     render: (r) => num(r.mints),
     first: "desc",
   },
@@ -104,7 +108,7 @@ const COLUMNS: Column[] = [
   {
     key: "effortPerMint",
     label: "Effort/mint",
-    note: "Placements per edition sold. Effort and editions have moved independently over the years, so it compares poorly across eras.",
+    note: "Placements per edition sold, on the same count Buried uses. Effort and editions have moved independently over the years, so it compares poorly across eras.",
     render: (r) => (r.effortPerMint === null ? "—" : Math.round(r.effortPerMint).toLocaleString()),
     first: "desc",
   },
@@ -232,6 +236,23 @@ export default function CanvasIndex({ rows, placed, visible }: Props) {
 
         {shown.length === 0 && <p className={styles.empty}>No canvas matches that.</p>}
       </div>
+
+      {/* The same notes the column headers carry as tooltips. A tooltip needs a
+          cursor, so on a phone the headers explain nothing at all — and none of
+          these figures exist elsewhere to look up. */}
+      <section className={styles.glossary} aria-labelledby="glossary">
+        <h2 id="glossary" className="label">
+          What the columns mean
+        </h2>
+        <dl className={styles.terms}>
+          {COLUMNS.map((c) => (
+            <div key={c.key} className={styles.term}>
+              <dt className={styles.termName}>{c.label}</dt>
+              <dd className={styles.termNote}>{c.note}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
     </div>
   );
 }

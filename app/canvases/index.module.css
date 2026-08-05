@@ -212,6 +212,55 @@
   font-size: var(--small);
 }
 
+/* ---- glossary ---- */
+
+.glossary {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+/* Two columns where there is room. The `min(…, 100%)` is load-bearing: a bare
+   minmax floor cannot shrink below itself, so on a narrow phone the track would
+   be wider than the screen and push the whole page sideways. The table above
+   already scrolls on its own; nothing else here may. */
+.terms {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(27rem, 100%), 1fr));
+  gap: 1.1rem 2.5rem;
+  margin: 1rem 0 0;
+}
+
+.term {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  gap: 0.75rem;
+  align-items: baseline;
+}
+
+.termName {
+  color: var(--paper);
+  font-size: var(--small);
+  font-weight: 500;
+}
+
+.termNote {
+  margin: 0;
+  color: var(--faint);
+  font-size: var(--small);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+@media (max-width: 30rem) {
+  /* The label sits above its definition rather than beside it — a 7rem column
+     leaves the note too narrow to read on a phone. */
+  .term {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
 /* ---- responsive ---- */
 
 @media (max-width: 900px) {
