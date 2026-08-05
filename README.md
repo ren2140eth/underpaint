@@ -43,12 +43,18 @@ events](screenshots/core-sample.png)
 paint and attribution.
 
 Each remix records its palette day in the URL, so shared links reproduce the
-same result. Have fun remix old paintings and see how they look then share!
+same result. Have fun remixing old paintings to see how they look, then share!
 
 ### Paint
 
 Compose a variation by changing time, coats, artists, or palette, then **paint**
-on top. Peel a painting back, remix colors then paint on top of it and create something new!
+on top. Peel a painting back, remix colors, then paint on top of it and create
+something new!
+
+Your brush keeps a borrowed palette. **Own colours** restores the canvas while
+your coat stays in the remixed palette, so you can remix until one catches your
+eye and then paint another canvas's palette onto this one. **Brush: own colours**
+hands it back.
 
 The attribution panel includes your pixels in the visible total and updates each
 artist's displayed share as you paint.
