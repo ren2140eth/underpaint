@@ -57,7 +57,7 @@ artist's displayed share as you paint.
 
 The archive contains 1,089 settled canvases, sortable by covered paint,
 coverage, depth, artist concentration, late activity, and earnings. **Later
-layers cover 62.1% of all recorded painting in BasePaint history.**
+layers cover 61.9% of all recorded painting in BasePaint history.**
 
 ![The archive sorted by buried share, with Ship of Theseus at
 92%](screenshots/archive.png)
@@ -77,9 +77,10 @@ Nothing is stored server-side, and the same link produces the same image.
              │            │   │     │     └────────── showing only artist 8
              │            │   │     └──────────────── your brush in day 102's palette
              │            │   └────────────────────── the canvas in day 102's palette
-             │            └─────────────────────────── two coats stripped
-             └──────────────────────────────────────── as it stood at hour 14
+             │            └────────────────────────── two coats stripped
+             └─────────────────────────────────────── as it stood at hour 14
 ```
+
 **Download PNG** exports whatever is on screen with the recipe in the filename.
 
 ## Licence

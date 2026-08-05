@@ -3,7 +3,7 @@
  *
  * `data/index.json` is committed, so every page that needs a canvas's headline
  * numbers gets them without a request. Strokes are still fetched on demand —
- * the index is 777 KB, the archive's strokes are hundreds of megabytes.
+ * the index is 955 KB, the archive's strokes are hundreds of megabytes.
  *
  * Server-side only: importing this from a client component would ship the whole
  * index to the browser.
@@ -27,6 +27,23 @@ export function allCanvases(): CanvasStats[] {
  */
 export function indexTable(): IndexRow[] {
   return indexRows(canvases);
+}
+
+/**
+ * Archive-wide totals, over settled canvases so they match the table beneath.
+ *
+ * Counted in `distinctPlaced`, not `placed`. A brush dragged back over its own
+ * path inside a single stroke writes the same pixel twice without burying
+ * anything, and `visible` counts pixels that survived — so dividing by the raw
+ * placement count would put the two halves of the ratio on different footings
+ * and produce a headline that disagrees with every Buried figure below it.
+ */
+export function archiveTotals(): { placed: number; visible: number } {
+  const settled = canvases.filter((c) => !c.mintWindowOpen);
+  return {
+    placed: settled.reduce((n, c) => n + c.distinctPlaced, 0),
+    visible: settled.reduce((n, c) => n + c.visible, 0),
+  };
 }
 
 export function canvasRow(day: number): CanvasStats | undefined {

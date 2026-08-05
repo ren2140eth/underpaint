@@ -13,7 +13,7 @@ const robotoMono = Roboto_Mono({
 export const metadata: Metadata = {
   title: "Underpaint — see what's under a BasePaint canvas",
   description:
-    "Replay every stroke of any BasePaint canvas to see the work beneath the finished artwork. 62.1% of all painting in BasePaint history is buried.",
+    "Replay every stroke of any BasePaint canvas to see the work beneath the finished artwork. 61.9% of all painting in BasePaint history is buried.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -39,8 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className={styles.footer}>
           <p>
             Stroke data from BasePaint's public indexer. Artwork is CC0. Underpaint is a viewer:
-            it computes an attribution split to show how a variation is composed, and moves no
-            funds.
+            it computes an attribution split to show how a variation is composed.
           </p>
           {/* BasePaint's optional referral beacon. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}

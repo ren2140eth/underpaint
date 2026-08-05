@@ -142,7 +142,7 @@ export default function CanvasIndex({ rows, placed, visible }: Props) {
       <header className={styles.masthead}>
         <div>
           <p className="label">The archive</p>
-          <h1 className={styles.title}>Every canvas, by what it buried</h1>
+          <h1 className={styles.title}>Every canvas, by what's underneath</h1>
         </div>
         <p className={styles.thesis}>
           <span className="readout">{pct(1 - visible / placed)}</span>
