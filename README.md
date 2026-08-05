@@ -15,14 +15,12 @@ visible-artist count rising from 36 to 57](screenshots/underpainting.png)
 *Day 1080, one coat down. Contributions from 29 artists reappear, while work from
 8 surface artists falls away because it had no earlier coat beneath it.*
 
-## What it does
+## Features
 
 ### X-ray
 
 Scrub through the day, peel back coats, isolate or hide individual artists, and
-bring the underpainting forward. The controls combine against the same
-per-pixel history, so hour 14, two coats down, without selected artists is one
-composition.
+bring the underpainting forward.
 
 ![The x-ray on day 1080 showing the finished artwork and the artist
 panel](screenshots/xray.png)
@@ -40,17 +38,12 @@ and the surface coat at the top.
 events](screenshots/core-sample.png)
 
 A coat is a continuous run of one colour by one artist, not an individual paint
-event. This prevents a brush crossing its own path from creating false layers.
-The deepest pixel in the archive records **8,104 paint events** across 85 coats.
-On the median canvas, the most-worked pixel appears in 19 strokes; on day 382,
-one pixel appears in 271.
+event. 
 
 ### Remix
 
 **Remix palette** applies another canvas's colours while preserving the original
-paint and attribution. Because BasePaint palettes contain 2 to 24 colours,
-Underpaint maps their ranges proportionally to retain the artwork's tonal
-structure.
+paint and attribution.
 
 Each remix records its palette day in the URL, so shared links reproduce the
 same result.
@@ -105,69 +98,7 @@ appearance. That order is stable for a settled canvas but not self-describing,
 so links also carry the artist count. If it changes, Underpaint removes the
 artist-specific controls instead of applying them to the wrong person.
 
-**Download PNG** exports whatever is on screen, upscaled by a whole number so
-the pixels stay square, with the recipe in the filename.
-
-## Verified against the real artwork
-
-`npm test` runs 172 offline fixtures covering render modes, attribution, artist
-rosters, pixel histories, URL recipes, palette mapping, brush geometry, and
-malformed input.
-
-`npm run verify` reconstructs selected canvases from their strokes and compares
-them pixel-for-pixel with the artwork published at `basepaint.net`:
-
-```
-$ npm run verify
-
-verifying 15 canvases against basepaint.net
-
-  PASS  day    1 (144px)  160 strokes, 27,498 px placed, 101 artists
-  PASS  day  131 (144px)  690 strokes, 104,498 px placed, 620 artists
-  PASS  day  365 (144px)  703 strokes, 99,411 px placed, 336 artists
-  PASS  day  366 (256px)  548 strokes, 113,982 px placed, 335 artists
-  PASS  day  569 (256px)  879 strokes, 156,204 px placed, 127 artists
-  PASS  day 1080 (256px)  157 strokes, 139,618 px placed, 68 artists
-  ...
-  15/15 canvases reproduced exactly
-```
-
-Run `npm run verify 1080 1081` to check specific days.
-
-## How it works
-
-Strokes are stored on Base as hex blobs — six characters per pixel, `XXYYCC`
-for x, y, and palette index. Replaying them in order reconstructs not just the
-final image but every layer beneath it. Data comes from BasePaint's public
-GraphQL indexer; there is no backend, the site is statically exported, and
-nothing is stored server-side.
-
-```
-src/engine/basepaint.ts    GraphQL client, palettes, proportional remapping
-src/engine/replay.ts       stroke replay, render modes, coat grouping
-src/engine/view.ts         composed variations, artist roster, URL recipes
-src/engine/stats.ts        per-canvas statistics
-src/engine/index-table.ts  the archive's rows and sort order
-src/engine/paint.ts        the visitor's own coat: brush, blob, overlay
-scripts/verify.ts          correctness proof against published artwork
-scripts/ingest.ts          precompute the canvas index
-scripts/palettes.ts        project the palette lookup the remix control fetches
-data/index.json            1,090 canvases, committed
-test/                      172 offline fixtures
-```
-
-Strokes are fetched on demand and replayed in the browser — the committed index
-is 978 KB, the archive's strokes are hundreds of megabytes.
-
-## A note on buried paint
-
-Covered paint is not a negative score or a flaw. Building on one another's work
-is central to BasePaint's shared canvas.
-
-Early and intermediate layers shape what comes next, even when later paint
-covers them. On day 1080, two of the most active artists placed 7,000 and 6,999
-pixels, all beneath later coats. Underpaint presents this history to show how the
-canvas developed, not to score the artists who made it.
+**Download PNG** exports whatever is on screen with the recipe in the filename.
 
 ## Licence
 
